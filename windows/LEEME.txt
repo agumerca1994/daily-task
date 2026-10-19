@@ -1,0 +1,42 @@
+ASISTENTE DE TAREAS - Windows
+=============================
+
+Una bandeja de tareas con tablero web. Cada tarea que cargues (en el tablero o pidiendosela a Kiro
+en el chat) la toma una IA, la investiga con el contexto del proyecto al que pertenece y te deja un
+analisis con una solucion propuesta y un borrador de respuesta.
+
+ANTES DE EMPEZAR
+----------------
+1. Node.js 20 o mas nuevo (version LTS): https://nodejs.org
+2. Kiro CLI instalado y con sesion iniciada (kiro-cli login). En el trabajo, con la cuenta de la
+   empresa. Sin Kiro la IA no puede trabajar.
+
+INSTALAR
+--------
+1. Antes de descomprimir: clic derecho en el .zip > Propiedades > marcar "Desbloquear" > Aceptar.
+   (Si no, Windows puede bloquear el instalador porque no esta firmado.)
+2. Descomprimi el .zip en una carpeta que no vayas a mover ni borrar, por ejemplo
+   Documentos\asistente-tareas. El asistente se ejecuta desde ahi.
+3. Doble clic en "Instalar Asistente de tareas.exe" y segui los pasos:
+   - donde guardar las tareas (una carpeta privada, fuera de cualquier repo),
+   - tus proyectos (la carpeta donde la IA busca contexto: el repo o la documentacion del equipo),
+   - las opciones (conectar con Kiro, menu Inicio, arrancar con Windows).
+   No hace falta ser administrador. Si SmartScreen lo frena: "Mas informacion" > "Ejecutar de todas
+   formas" (o desbloquea el .zip como dice el paso 1).
+
+USAR
+----
+- Menu Inicio > Asistente de tareas: lo inicia (sin ventanas) y abre el tablero.
+- Queda un icono junto al reloj (si no lo ves, esta en la flecha ^: arrastralo a la barra).
+  Doble clic: abre el tablero. Clic derecho: Ver actividad, Detener.
+- Crea tareas en el tablero o desde el chat de Kiro: "crea una tarea en la bandeja: ...".
+- En uno o dos minutos la tarea queda en "Para revisar" o "Esperando info" y te llega un aviso.
+- Para responder lo que falta, desde Kiro: "responde TASK-5: ..." (o en el tablero, agregando la
+  respuesta en las notas y volviendo la tarea a Pendiente).
+
+PROBLEMAS
+---------
+- Registro del instalador: %LOCALAPPDATA%\asistente-tareas\instalador.log
+- Registro del asistente: <carpeta de las tareas>\logs\
+- Para desinstalar (no borra tus tareas): volve a abrir el instalador o ejecuta
+  node bin\asistente.mjs desinstalar

@@ -41,7 +41,7 @@ const args = [
 ];
 if (process.env.PROJECT_MODEL) args.push("--model", process.env.PROJECT_MODEL);
 
-const r = spawnSync(claude, args, { cwd: process.env.PROJECT_DIR, encoding: "utf8", timeout: 10 * 60 * 1000 });
+const r = spawnSync(claude, args, { cwd: process.env.PROJECT_DIR, encoding: "utf8", timeout: 10 * 60 * 1000, windowsHide: true });
 if (r.error) terminar(1, r.error.message);
 if (r.status !== 0) terminar(r.status ?? 1, `${r.stderr ?? ""}`.trim());
 terminar(0, `${r.stdout ?? ""}`.trim().split(/\r?\n/).filter(Boolean).at(-1) ?? "(sin respuesta)");

@@ -4,9 +4,9 @@
 # Node
 node_modules/
 
-# .NET (capturador)
-bin/
-obj/
+# .NET (capturador): solo sus carpetas de compilación (bin/asistente.mjs es parte de la herramienta)
+capturador/**/bin/
+capturador/**/obj/
 *.user
 
 # Sistema
@@ -21,3 +21,6 @@ spikes/bandeja/adjuntos/*
 
 # Configuración local (rutas de cada PC). Se versiona solo el .example.
 spikes/eventos/eventos.json
+
+# Instalador compilado (los .exe no van al repo: se generan con `asistente compilar-instalador`)
+dist/

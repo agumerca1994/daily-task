@@ -19,7 +19,7 @@ const modelo = process.env.KIRO_MODEL || process.env.PROJECT_MODEL;
 if (modelo) args.push("--model", modelo);
 args.push(promptProcesar());
 
-const r = spawnSync(kiro, args, { cwd: process.env.PROJECT_DIR, encoding: "utf8", timeout: 10 * 60 * 1000 });
+const r = spawnSync(kiro, args, { cwd: process.env.PROJECT_DIR, encoding: "utf8", timeout: 10 * 60 * 1000, windowsHide: true });
 if (r.error) terminar(1, r.error.message);
 if (r.status !== 0) {
   const err = `${r.stderr ?? ""}`.trim().split(/\r?\n/).slice(-5).join("\n");

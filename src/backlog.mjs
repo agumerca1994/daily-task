@@ -12,7 +12,7 @@ export function backlogCli() {
   const candidatos = [];
   if (process.env.BACKLOG_CLI) candidatos.push(process.env.BACKLOG_CLI);
   try {
-    const raiz = execSync("npm root -g", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const raiz = execSync("npm root -g", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], windowsHide: true }).trim();
     candidatos.push(join(raiz, "backlog.md", "cli.js"));
   } catch { /* npm no disponible */ }
   const encontrado = candidatos.find(existsSync);
@@ -26,10 +26,10 @@ export const comandoBacklog = () => ({ command: process.execPath.replace(/\\/g, 
 
 /** Ejecuta `backlog <args>` y devuelve { status, stdout, stderr }. */
 export function backlog(args, { cwd } = {}) {
-  return spawnSync(process.execPath, [backlogCli(), ...args], { cwd, encoding: "utf8" });
+  return spawnSync(process.execPath, [backlogCli(), ...args], { cwd, encoding: "utf8", windowsHide: true });
 }
 
 /** Lanza `backlog <args>` como proceso hijo (por ejemplo, `task list --json --watch`). */
 export function backlogSpawn(args, { cwd } = {}) {
-  return spawn(process.execPath, [backlogCli(), ...args], { cwd });
+  return spawn(process.execPath, [backlogCli(), ...args], { cwd, windowsHide: true });
 }

@@ -340,16 +340,39 @@ Hecho con `node bin/asistente.mjs instalar`:
 
 Objetivo: usarlo de verdad unos días con Kiro y SmartHome, cargando las tareas a mano o desde Kiro.
 
-1. **`asistente iniciar`**: un solo comando que levanta el tablero, el vigilante y el servidor de
-   adjuntos (`127.0.0.1:6421` → `adjuntos/`), y los cierra juntos.
-2. **Crear tareas desde Kiro**: probar desde el chat de Kiro (IDE y CLI) en SmartHome
-   "creá una tarea en la bandeja: …" con el MCP de usuario, y ajustar `asistente.md` si hace falta.
-3. **Notificaciones de Windows** cuando una tarea queda en `Para revisar` o `Esperando info`, o si el
-   motor falla (por ejemplo, venció el login de Kiro).
-4. **Inicio automático** (Windows: `shell:startup`; Linux: servicio de usuario de systemd).
-5. **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
+1. [x] **`asistente iniciar`**: levanta el tablero, el vigilante y el servidor de adjuntos
+   (`127.0.0.1:6421` → `adjuntos/`, solo lectura, bloquea rutas fuera de `adjuntos/`), y los cierra
+   juntos con Ctrl+C.
+2. [x] **Crear tareas desde Kiro**: probado desde el chat de Kiro CLI en SmartHome con el MCP de
+   usuario. Sin más, Kiro investigaba y metía su propio análisis en la descripción; con el **steering
+   global** `~/.kiro/steering/bandeja-tareas.md` (lo instala `asistente instalar` y se actualiza con
+   la lista de proyectos) crea la tarea con el pedido original, `## Origen` y el proyecto correcto. El
+   vigilante la toma al segundo. Falta probarlo desde el chat de Kiro IDE.
+3. [x] **Notificaciones** (toast nativo de Windows vía PowerShell inline; `notify-send` en Linux;
+   `osascript` en macOS) cuando una tarea queda en `Para revisar` o `Esperando info`, o si el motor
+   falla. Si no se pueden mostrar, solo se anota en el log. Falta confirmar que el toast se ve.
+4. [x] **Inicio automático**: `asistente autoinicio activar|desactivar|estado` (Windows: `.cmd` en la
+   carpeta Inicio, consola minimizada; Linux: servicio de usuario de systemd). Falta activarlo y
+   probarlo en un reinicio de sesión.
+5. [x] **Instalación y arranque con doble clic** (sin administrador): `instalar.cmd` (Windows) /
+   `instalar.sh` (Linux, macOS) abren el instalador, que ofrece instalar Backlog.md si falta y crea en el
+   menú Inicio la carpeta **Asistente de tareas** con tres accesos: *Asistente de tareas* (lo inicia
+   **en segundo plano, sin ventana**, abre el tablero y avisa; si ya está corriendo, solo abre el
+   tablero), *Ver actividad* (registro en vivo) y *Detener*. `.lnk` vía WScript.Shell, con `.cmd`
+   como plan B si PowerShell está bloqueado; `.desktop` en Linux. Probado con doble clic real.
+   Además: si una tarea no tiene proyecto y hay uno solo, se usa ese y se escribe en la tarea; si hay
+   varios, llega una notificación y se procesa apenas se le asigna el proyecto en el tablero. `asistente desinstalar` quita
+   accesos, autoinicio y la integración con Kiro sin tocar la bandeja.
+6. [x] **Ícono junto al reloj y sin ventanas** (Windows): `windows/AsistenteTareas.cs` (WinForms,
+   C# 5) que `asistente instalar` compila con el `csc.exe` de .NET Framework 4 que trae Windows (sin
+   instalar nada ni subir binarios). Levanta el asistente sin consola, ícono azul/gris con menú (Abrir
+   tablero, Ver actividad, Iniciar, Detener y salir), una sola instancia, avisa si el asistente se cae,
+   registra errores en `%LOCALAPPDATA%\asistente-tareas\icono.log`. Todos los procesos hijos con
+   `windowsHide`. Probado con doble clic real: no aparece ninguna ventana ni al iniciar ni mientras
+   Kiro procesa. Este programa es la base del capturador (Fase 5).
+7. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
    `conocimiento/SmartHome/` lo que no está en el repo.
-6. *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
+8. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
    en `conocimiento/<proyecto>/casos/`.
 
 **Criterio de salida:**

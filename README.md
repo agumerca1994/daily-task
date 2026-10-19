@@ -23,35 +23,79 @@ El plan completo está en [PLAN.md](PLAN.md).
 
 ```bash
 git clone https://github.com/agumerca1994/daily-task.git
-cd daily-task
-node bin/asistente.mjs instalar
 ```
 
-El instalador:
+- **Windows:** doble clic en `dist\Instalar Asistente de tareas.exe` (instalador con ventanas). Si todavía
+  no existe, generalo con `node bin/asistente.mjs compilar-instalador`, o usá `instalar.cmd` (por
+  terminal). El .exe no está firmado: SmartScreen o el antivirus pueden pedir confirmación.
+- **Linux / macOS:** `./instalar.sh`.
+- (O en cualquier sistema: `node bin/asistente.mjs instalar`.)
+
+No hace falta ser administrador. El instalador:
+
+0. Si falta Backlog.md, ofrece instalarlo (`npm i -g backlog.md`).
 
 1. Crea la **bandeja** (por defecto `~/asistente-bandeja`). Es privada: no la pongas dentro de un
    repo que se suba, porque las tareas pueden tener datos de clientes.
 2. Te pregunta qué **proyectos** agregar: nombre, carpeta y motor (`kiro` o `claude`).
-3. Instala en tu usuario de Kiro el agente `asistente-tareas` y el MCP `backlog` (para crear y
-   consultar tareas desde el chat en cualquier proyecto). No modifica tus proyectos.
+3. Instala en tu usuario de Kiro (no en tus proyectos):
+   - el agente `asistente-tareas`, que procesa las tareas;
+   - el MCP `backlog`, para crear y consultar tareas desde el chat en cualquier proyecto;
+   - un steering global (`~/.kiro/steering/bandeja-tareas.md`) que le explica a Kiro cómo crear
+     tareas en la bandeja.
 
-Se puede volver a ejecutar cuando quieras: no borra tareas ni proyectos.
+4. Crea en el menú Inicio la carpeta **Asistente de tareas** (y, si querés, el acceso principal en
+   el escritorio), y opcionalmente lo deja arrancando solo al iniciar sesión.
 
-## Uso
+Se puede volver a ejecutar cuando quieras: no borra tareas ni proyectos. Para quitar todo lo
+instalado (sin borrar la bandeja): `node bin/asistente.mjs desinstalar`.
 
-```bash
-# Tablero web (http://127.0.0.1:6420)
-cd ~/asistente-bandeja && backlog browser
+## Uso del día a día
 
-# Vigilante: manda cada tarea nueva o respondida a la IA de su proyecto
-node bin/asistente.mjs vigilante
-```
+En el menú Inicio, carpeta **Asistente de tareas**:
+
+| Acceso | Qué hace |
+|---|---|
+| **Asistente de tareas** | Lo inicia sin ninguna ventana, pone su ícono junto al reloj y abre el tablero. Si ya estaba corriendo, solo abre el tablero |
+| **Ver actividad del asistente** | Ventana con lo que va haciendo, en vivo. Cerrarla no lo detiene |
+| **Detener asistente de tareas** | Lo cierra (y saca el ícono) |
+
+**Ícono junto al reloj** (Windows): azul = activo, gris = detenido. Doble clic abre el tablero; clic
+derecho: *Abrir tablero*, *Ver actividad*, *Iniciar* (si está detenido) y *Detener y salir*. Si
+Windows lo esconde en la flecha `^` del área de notificación, arrastralo a la barra para que quede
+siempre visible. Para tenerlo también en la barra de tareas: clic derecho en *Asistente de tareas*
+del menú Inicio > *Anclar a la barra de tareas*.
+
+El ícono es un programa chico (`windows/AsistenteTareas.cs`) que el instalador compila en tu PC
+con el compilador de C# que trae Windows; no se descarga nada. Si no se puede compilar, el asistente
+funciona igual, pero muestra una consola minimizada un instante al iniciar.
+
+El ciclo de una tarea:
+
+1. **La creás** (ver abajo). Queda en **Pendiente**.
+2. **El asistente la toma sola** en segundos y la pasa a **En análisis**. La IA trabaja en la carpeta
+   del proyecto de la tarea (si la tarea no tiene proyecto y hay uno solo configurado, usa ese y lo
+   escribe en la tarea; si hay varios, te avisa para que lo elijas en el tablero).
+3. En uno o dos minutos la deja en **Para revisar** (propuso solución y borrador de respuesta) o en
+   **Esperando info** (dice qué falta). Te llega una notificación.
+4. **La revisás** en el tablero: el análisis está en *Implementation Notes*.
+   - Si faltaba info: agregá la respuesta en las notas (sección *Respuestas*) y volvé la tarea a
+     **Pendiente**: el asistente la retoma.
+   - Si está bien: pasala a **Resuelta**.
 
 Para crear tareas:
-- En el tablero: **New Task**, con estado `Pendiente` y el proyecto.
-- Desde el chat de Kiro (IDE o CLI), en cualquier proyecto: *"creá una tarea en la bandeja para el
-  proyecto SmartHome: …"*.
-- Por línea de comandos: `backlog task create "Título" --project SmartHome -d "..."`, desde la bandeja.
+- **En el tablero**: *New Task*. Título, descripción (pegá el mensaje tal cual) y, si tenés más de un
+  proyecto, el proyecto. El estado por defecto ya es *Pendiente*.
+- **Desde el chat de Kiro** (IDE o CLI), en cualquier proyecto: *"creá una tarea en la bandeja: …"*.
+- **Por línea de comandos**, desde la bandeja: `backlog task create "Título" --project SmartHome -d "..."`.
+
+Imágenes: el tablero no permite adjuntarlas. Guardalas en `adjuntos/<id de la tarea>/` (por ejemplo
+`adjuntos/task-12/captura.png`): la IA las lee de ahí, y en el tablero se ven si las enlazás en la
+descripción como `![captura](http://127.0.0.1:6421/task-12/captura.png)`.
+
+Por línea de comandos: `node bin/asistente.mjs iniciar | detener | actividad`, e `iniciar --ventana`
+para tener todo en una ventana con la actividad a la vista. Para que arranque solo al iniciar
+sesión: `node bin/asistente.mjs autoinicio activar` (`desactivar`, `estado`).
 
 Proyectos:
 
@@ -70,7 +114,7 @@ node bin/asistente.mjs proyecto por-defecto <nombre|ninguno>
 | `adjuntos/<id>/` | Imágenes y archivos de cada tarea |
 | `conocimiento/<proyecto>/` | Procedimientos y casos que no están en el repo del proyecto |
 | `instrucciones.md` | Tus instrucciones propias para el asistente (rol, área, a quién escalar) |
-| `asistente.json` | Proyectos: carpeta, motor y modelo |
+| `asistente.json` | Proyectos: carpeta, motor y modelo. `"notificaciones": false` las apaga |
 | `logs/vigilante.log` | Qué hizo el vigilante |
 
 ## Estados

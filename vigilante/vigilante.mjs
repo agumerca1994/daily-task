@@ -13,15 +13,18 @@ import { spawn } from "node:child_process";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { backlogSpawn } from "../src/backlog.mjs";
+import { backlog, backlogSpawn } from "../src/backlog.mjs";
 import { leerConfig, rutaInstrucciones } from "../src/bandeja.mjs";
+import { notificar } from "../src/notificar.mjs";
 import { ASISTENTE_MD } from "../src/rutas.mjs";
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 const MOTORES = { kiro: join(aqui, "motores", "kiro.mjs"), claude: join(aqui, "motores", "claude.mjs") };
 const PENDIENTE = "Pendiente";
+const PARA_AVISAR = ["Para revisar", "Esperando info"];
 
-export function vigilar(bandeja) {
+/** Empieza a vigilar la bandeja. Devuelve { detener }. `alTerminar` se llama si --watch se corta. */
+export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1) } = {}) {
   mkdirSync(join(bandeja, "logs"), { recursive: true });
   const logFile = join(bandeja, "logs", "vigilante.log");
   const log = (msg) => {
@@ -42,20 +45,30 @@ export function vigilar(bandeja) {
 
   function procesar(ev) {
     const cfg = leerConfig(bandeja); // se relee en cada evento: los cambios de proyectos aplican sin reiniciar
-    const nombre = ev.task.project ?? cfg.proyectoPorDefecto;
+    const nombres = Object.keys(cfg.proyectos);
+    // Sin proyecto: el por defecto, o el único configurado
+    const nombre = ev.task.project ?? cfg.proyectoPorDefecto ?? (nombres.length === 1 ? nombres[0] : null);
     const proyecto = nombre && cfg.proyectos[nombre];
     if (!proyecto) {
-      return log(`  ! ${ev.task.id} sin proyecto configurado (${nombre ?? "vacío"}): queda en Pendiente. ` +
-        `Asignale un proyecto o agregalo con: asistente proyecto agregar`);
+      const motivo = nombre ? `el proyecto "${nombre}" no está configurado` : "no tiene proyecto";
+      log(`  ! ${ev.task.id} ${motivo}: queda en Pendiente hasta que tenga uno (${nombres.join(", ") || "no hay proyectos"})`);
+      return avisar(`${ev.task.id}: falta el proyecto`,
+        nombres.length ? `Elegilo en el tablero (Project): ${nombres.join(", ")}` : "No hay proyectos configurados: ejecutá el instalador");
     }
     const script = MOTORES[proyecto.motor];
     if (!script) return log(`  ! motor desconocido "${proyecto.motor}" en el proyecto ${nombre}`);
+    if (!ev.task.project) {
+      // Se eligió el proyecto por defecto: queda escrito en la tarea para verlo y filtrarlo en el tablero
+      const r = backlog(["task", "edit", ev.task.id, "--project", nombre], { cwd: bandeja });
+      log(r.status === 0 ? `  · ${ev.task.id} sin proyecto: se asigna ${nombre}` : `  ! no se pudo asignar ${nombre} a ${ev.task.id}`);
+    }
 
     encolar(nombre, ev.task.id, () => new Promise((fin) => {
       const inicio = Date.now();
       log(`  > ${ev.task.id} -> ${proyecto.motor} en ${nombre}`);
       const p = spawn(process.execPath, [script], {
         cwd: proyecto.carpeta,
+        windowsHide: true,
         env: {
           ...process.env,
           EVENT: ev.type,
@@ -73,8 +86,11 @@ export function vigilar(bandeja) {
       p.stdout.on("data", (d) => log(`    [${ev.task.id}] ${d.toString().trim()}`));
       p.stderr.on("data", (d) => log(`    [${ev.task.id}!] ${d.toString().trim()}`));
       p.on("error", (e) => { log(`  ! ${ev.task.id}: ${e.message}`); fin(); });
+      let error = "";
+      p.stderr.on("data", (d) => { error += d; });
       p.on("close", (code) => {
         log(`  < ${ev.task.id} terminó (código ${code}, ${Math.round((Date.now() - inicio) / 1000)} s)`);
+        if (code !== 0) avisar(`${ev.task.id}: falló ${proyecto.motor}`, error.trim().split(/\r?\n/).at(-1) || `código ${code}`);
         fin();
       });
     }));
@@ -85,7 +101,15 @@ export function vigilar(bandeja) {
     log(`EVENTO ${ev.type} ${ev.task.id} [${ev.task.project ?? "sin proyecto"}] "${ev.task.title}"${extra}`);
     const nueva = ev.type === "task.created" && ev.task.status === PENDIENTE;
     const respondida = ev.type === "task.moved" && ev.to === PENDIENTE;
-    if (nueva || respondida) procesar(ev);
+    // Tarea que esperaba proyecto y se lo asignaron en el tablero
+    const conProyecto = ev.type === "task.updated" && ev.task.status === PENDIENTE && ev.antes?.project !== ev.task.project;
+    if (nueva || respondida || conProyecto) procesar(ev);
+    if (ev.type === "task.moved" && PARA_AVISAR.includes(ev.to)) avisar(`${ev.task.id}: ${ev.to}`, ev.task.title);
+  }
+
+  function avisar(titulo, texto) {
+    if (leerConfig(bandeja).notificaciones === false) return;
+    notificar(titulo, texto).catch((e) => log(`  ! no se pudo notificar: ${e.message}`));
   }
 
   // --- Lectura del --watch
@@ -107,10 +131,13 @@ export function vigilar(bandeja) {
   watch.stdout.setEncoding("utf8");
   watch.stdout.on("data", lector);
   watch.stderr.on("data", (d) => log(`backlog: ${d.toString().trim()}`));
-  watch.on("close", (code) => { log(`backlog --watch terminó (código ${code})`); process.exit(code ?? 1); });
-  const salir = () => { watch.kill(); process.exit(0); };
-  process.on("SIGINT", salir);
-  process.on("SIGTERM", salir);
+  let deteniendo = false;
+  watch.on("close", (code) => {
+    if (deteniendo) return;
+    log(`backlog --watch terminó (código ${code})`);
+    alTerminar(code);
+  });
+  return { detener: () => { deteniendo = true; watch.kill(); } };
 }
 
 // Objetos JSON completos, uno detrás de otro (pueden venir partidos en varios chunks)
@@ -144,7 +171,7 @@ function diff(prev, curr) {
     const antes = prev.get(id);
     if (!antes) eventos.push({ type: "task.created", task: t });
     else if (antes.status !== t.status) eventos.push({ type: "task.moved", task: t, from: antes.status, to: t.status });
-    else if (huella(antes) !== huella(t)) eventos.push({ type: "task.updated", task: t });
+    else if (huella(antes) !== huella(t)) eventos.push({ type: "task.updated", task: t, antes });
   }
   for (const [id, t] of prev) if (!curr.has(id)) eventos.push({ type: "task.deleted", task: t });
   return eventos;
