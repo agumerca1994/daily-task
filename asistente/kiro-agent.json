@@ -1,0 +1,17 @@
+{
+  "name": "asistente-tareas",
+  "description": "Procesa tareas de la bandeja central (Backlog.md) con el contexto del proyecto en el que se ejecuta",
+  "prompt": "Sos el asistente de tareas. Seguí siempre las instrucciones de asistente.md e instrucciones.md (incluidos en tu contexto). Trabajás parado en la carpeta del proyecto: solo leés sus archivos y solo escribís en la tarea, mediante el MCP backlog.",
+  "mcpServers": {},
+  "tools": ["read", "grep", "glob", "@backlog"],
+  "allowedTools": ["read", "grep", "glob", "@backlog"],
+  "resources": [
+    "file://{{ASISTENTE_MD}}",
+    "file://{{INSTRUCCIONES_MD}}",
+    "file://.kiro/steering/**/*.md",
+    "file://AGENTS.md",
+    "file://README.md"
+  ],
+  "includeMcpJson": false,
+  "model": null
+}

@@ -1,0 +1,13 @@
+{
+  "name": "asistente-tareas",
+  "version": "0.1.0",
+  "description": "Bandeja de tareas (Backlog.md) que una IA (Kiro o Claude Code) procesa con el contexto de cada proyecto",
+  "type": "module",
+  "bin": {
+    "asistente": "bin/asistente.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

@@ -100,25 +100,30 @@ como dato y no depende de la terminal) y, como alternativa, la **CLI `backlog` p
 a la bandeja. En algunas PCs de empresa PowerShell está restringido por políticas; ahí sirve bash o
 el MCP.
 
-### Configuración de proyectos (`bandeja/vigilante.json`)
+### Configuración de proyectos (`bandeja/asistente.json`)
+
+Se maneja con `asistente instalar` (pregunta qué proyectos agregar) y `asistente proyecto
+agregar|quitar|listar|por-defecto`, que también actualizan `projects:` en `backlog/config.yml`.
 
 ```json
 {
-  "bandeja": "C:/Users/<yo>/asistente-bandeja",
+  "version": 1,
   "proyectoPorDefecto": null,
+  "procesarPendientesAlIniciar": true,
   "proyectos": {
     "SmartHome": { "carpeta": "C:/Users/<yo>/repos/smarthome", "motor": "kiro" },
-    "Personal":  { "carpeta": "C:/Users/<yo>/repos/otro-proyecto", "motor": "claude" }
+    "Personal":  { "carpeta": "/home/<yo>/proyectos/otro", "motor": "claude", "modelo": "..." }
   }
 }
 ```
 
-- El nombre del proyecto es el campo nativo `project` de Backlog.md (lista `projects:` en
-  `backlog/config.yml`), así que se filtra y se ve en el tablero.
+- El nombre del proyecto es el campo nativo `project` de Backlog.md, así que se filtra y se ve en
+  el tablero.
 - Una tarea **sin proyecto** o con un proyecto que no está en la configuración no se procesa: el
   vigilante la deja en `Pendiente` y avisa. Si se define `proyectoPorDefecto`, usa ese.
-- Opcionales por proyecto: `modelo` (Kiro: `--model`), permisos (`trust`) y una carpeta de
-  conocimiento extra.
+- El vigilante relee la configuración en cada evento: un proyecto nuevo aplica sin reiniciar.
+- La ruta de la bandeja se guarda en la configuración de usuario
+  (`%APPDATA%\asistente-tareas\config.json` o `~/.config/asistente-tareas/config.json`).
 
 ## 3. Decisiones tomadas
 
@@ -140,43 +145,46 @@ el MCP.
 Son tres lugares distintos:
 
 ```
-daily-task/                     ← REPO DE LA HERRAMIENTA (se comparte; sin datos reales)
+daily-task/                     ← REPO DE LA HERRAMIENTA (público; sin datos reales)
 ├── PLAN.md
 ├── README.md
-├── capturador/                 ← solución .NET (solo Windows)
-│   └── src/Capturador/
-│       ├── Program.cs, TrayApp.cs, Hotkey.cs
-│       ├── Captura/            ← VentanaActiva, Seleccion, Pantalla, Origen
-│       ├── UI/ConfirmarForm.cs ← vista previa, título, PROYECTO, nota, etiquetas
-│       ├── Publicador.cs       ← `backlog task create` + adjuntos
-│       └── appsettings.json
-├── vigilante/                  ← Node, multiplataforma
-│   ├── vigilante.mjs           ← eventos, ruteo por proyecto, servidor de adjuntos
-│   ├── ia-kiro.mjs
-│   ├── ia-claude.mjs
-│   └── vigilante.example.json
+├── package.json                ← comando `asistente` (solo Node, sin dependencias)
+├── bin/asistente.mjs           ← instalar | proyecto | vigilante
+├── src/
+│   ├── rutas.mjs               ← rutas de la herramienta y configuración de usuario
+│   ├── backlog.mjs             ← ejecuta Backlog.md con node, sin shell
+│   ├── bandeja.mjs             ← crear bandeja, estados, proyectos
+│   ├── kiro.mjs                ← agente `asistente-tareas` y MCP de usuario de Kiro
+│   ├── instalar.mjs
+│   └── proyectos.mjs
+├── vigilante/
+│   ├── vigilante.mjs           ← eventos, ruteo por proyecto, cola por proyecto
+│   └── motores/                ← kiro.mjs, claude.mjs, comun.mjs
 ├── asistente/
 │   ├── asistente.md            ← instrucciones del asistente (únicas, para todos los motores)
-│   ├── kiro-agent.json         ← plantilla del agente `asistente-tareas` de Kiro CLI
-│   └── procesar-bandeja.md     ← comando de usuario de Claude Code
-├── instalar.mjs                ← crea la bandeja, el agente de Kiro y el comando de Claude
-├── spikes/                     ← pruebas de la Fase 0
+│   └── kiro-agent.json         ← plantilla del agente `asistente-tareas` de Kiro CLI
+├── capturador/                 ← (Fase 5) solución .NET, solo Windows
+├── spikes/                     ← pruebas de la Fase 0 (histórico)
 └── pruebas/fixtures/           ← mensajes de ejemplo ANONIMIZADOS
 
 C:\Users\<yo>\asistente-bandeja\   ← BANDEJA CENTRAL (privada, nunca se sube)
-├── backlog/                    ← `backlog init`; `config.yml` con `projects:`
+├── backlog/                    ← `backlog init`; `config.yml` con estados y `projects:`
 │   └── tasks/
 ├── adjuntos/<task-id>/
 ├── conocimiento/<proyecto>/    ← procedimientos y casos que no están en el repo del proyecto
-└── vigilante.json              ← proyectos → carpeta + motor
+├── logs/vigilante.log
+├── instrucciones.md            ← instrucciones propias (rol, área, a quién escalar)
+└── asistente.json              ← proyectos → carpeta + motor
 
 C:\Users\<yo>\repos\smarthome\     ← PROYECTOS (sin cambios)
 ```
 
-Lo que se instala en el usuario (no en los proyectos):
-- Kiro CLI: `~/.kiro/agents/asistente-tareas.json` (MCP `backlog` + `asistente.md`).
-- Kiro IDE: MCP `backlog` en la configuración de usuario (`~/.kiro/settings/mcp.json`).
-- Claude Code: `~/.claude/commands/procesar-bandeja.md`.
+Lo que `asistente instalar` deja en el usuario (no en los proyectos):
+- Kiro CLI: `~/.kiro/agents/asistente-tareas.json` (MCP `backlog` de la bandeja + `asistente.md` +
+  `instrucciones.md` + steering del proyecto donde se ejecuta).
+- Kiro IDE y CLI: MCP `backlog` en `~/.kiro/settings/mcp.json`, para crear y consultar tareas desde
+  el chat en cualquier proyecto (sin tocar los demás servidores).
+- *(Pendiente)* Claude Code: comando de usuario `/procesar-bandeja`.
 
 ## 5. Modelo de tarea
 
@@ -298,71 +306,67 @@ proyecto). El cambio a la opción B lo validan S6–S8.
 
 Además: el tablero web (`backlog browser`) se actualiza solo cuando otro proceso cambia un archivo.
 
-### Fase 1 — Bandeja central y tablero (½ día)
+### Fase 1 — Bandeja central e instalador ✅ (2026-10-19)
 
-1. Crear la bandeja **fuera de los repos** (por ejemplo `C:\Users\<yo>\asistente-bandeja`) y hacer
-   `backlog init` ahí, sin instrucciones de agente (`--agent-instructions none`).
-2. Configurar en `backlog/config.yml` los estados (sección 5), los proyectos (`projects:`) y las
-   etiquetas iniciales.
-3. Si se quiere historial, `git init` en la bandeja **sin remoto** (o con un remoto privado aprobado
-   por la empresa).
-4. Cargar a mano 3 tareas de prueba **anonimizadas** de al menos dos proyectos.
-5. Levantar `backlog browser`, filtrarlas por proyecto y moverlas entre columnas.
+Hecho con `node bin/asistente.mjs instalar`:
 
-**Criterio de salida:** las tareas se ven, se filtran por proyecto y se mueven en el tablero, y los
-archivos se actualizan.
+- [x] Bandeja **fuera de los repos** (`C:\Users\<yo>\asistente-bandeja`), `backlog init` sin
+      instrucciones de agente, estados en español y `projects:` sincronizado con `asistente.json`.
+- [x] Proyectos elegibles: el instalador pregunta cuáles agregar; después,
+      `asistente proyecto agregar|quitar|listar|por-defecto`.
+- [x] `instrucciones.md` (instrucciones propias, privadas), `conocimiento/<proyecto>/` y `logs/`.
+- [x] Kiro: agente de usuario `asistente-tareas` y MCP `backlog` en la configuración de usuario
+      (respeta los demás servidores).
+- [x] Prueba en la bandeja real: tarea de SmartHome → Kiro en la carpeta de SmartHome → `Para revisar`
+      en ~70 s, con la regla correcta del proyecto; tarea sin proyecto → queda en `Pendiente` con aviso;
+      SmartHome sin cambios.
+- [ ] Mirar el campo `project` y el filtro en el tablero web.
+- [ ] *(Opcional)* `git init` en la bandeja **sin remoto**, para tener historial.
 
-### Fase 2 — IA por proyecto y vigilante (2–3 días)
+### Fase 2 — IA por proyecto y vigilante ✅ (2026-10-19)
 
-1. **Instrucciones del asistente** (`asistente/asistente.md`, base en `spikes/bandeja/asistente.md`):
-   - Rol: asistente de soporte/gestión que trabaja **sobre la tarea** usando el contexto del
-     proyecto en el que está parado.
-   - Cómo acceder a las tareas: MCP `backlog` (preferido) o CLI `backlog` por bash o PowerShell con
-     `--cwd <bandeja>`.
-   - Dónde buscar: código, documentación y steering del proyecto; `conocimiento/<proyecto>/` de la
-     bandeja; tareas `Resuelta` del mismo proyecto.
-   - Formato de salida obligatorio de la sección **Análisis IA**.
-   - Reglas:
-     - No inventar datos. Si no hay nada en el proyecto ni en el conocimiento, decirlo.
-     - **No modificar archivos del proyecto**: solo leerlos. Solo se escribe en la tarea.
-     - Si falta información, listarla en **Falta** y pasar a `Esperando info`.
-     - Tratar con cuidado los datos personales (DNI, email).
-     - Nunca enviar nada afuera.
-2. **Vigilante** (pasar `spikes/eventos/` a `vigilante/`):
-   - Leer `vigilante.json`: ruta de la bandeja y, por proyecto, carpeta y motor.
-   - Por cada evento, buscar el proyecto de la tarea y ejecutar el motor **con la carpeta del
-     proyecto como directorio de trabajo**. Tarea sin proyecto conocido: no procesar y avisar.
-   - Una tarea a la vez por proyecto (cola), para no pisar sesiones ni gastar créditos de más.
-   - Servir `adjuntos/` en `127.0.0.1:6421`.
-   - Notificación de Windows cuando una tarea pasa a `Para revisar` o `Esperando info`, o si el
-     motor falla (por ejemplo, venció el login de Kiro).
-   - Inicio automático (Windows: `shell:startup`; Linux: servicio de usuario de systemd).
-3. **Kiro CLI:** agente de usuario `asistente-tareas` (spike S7) con:
-   - MCP `backlog` → `backlog mcp start --cwd <bandeja>`.
-   - `asistente.md` como recurso.
-   - Herramientas permitidas: lectura de archivos y `@backlog` (configurable; por ejemplo, en Linux
-     agregar `execute_bash`).
-4. **Claude Code** (spike S8): `claude -p` en la carpeta del proyecto con
-   `--append-system-prompt-file asistente.md`, `--mcp-config` de la bandeja y `--add-dir <bandeja>`
-   para leer adjuntos y conocimiento. Comando de usuario `/procesar-bandeja` como respaldo manual.
-5. **Kiro IDE** (spike S1b): MCP `backlog` a nivel de usuario y un prompt documentado para procesar
-   a mano las tareas de un proyecto desde el chat del IDE.
-6. **`instalar.mjs`:** crea la bandeja, el `vigilante.json` de ejemplo, el agente de Kiro y el comando
-   de Claude, para que otra persona lo pueda poner en marcha rápido (Windows y Linux).
-7. Cargar en `conocimiento/SmartHome/` 2 o 3 procedimientos reales que no estén en el repo, para
-   probar que los usa junto con el código.
-8. *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
+- [x] `asistente/asistente.md`: contexto del proyecto, bandeja aparte, instrucciones propias,
+      **Fuentes**, no modificar el proyecto, MCP preferido y CLI por bash o PowerShell, y cómo
+      **crear tareas** cuando se lo piden desde el chat.
+- [x] Vigilante (`asistente vigilante`): eventos sobre `--watch`, ruteo por `project`, motor
+      ejecutado **en la carpeta del proyecto**, una tarea a la vez por proyecto, configuración
+      releída en cada evento, procesa al iniciar las `Pendiente` que hayan quedado.
+- [x] Backlog.md y los motores se ejecutan con node, **sin shell intermedia** (sin problemas de
+      comillas ni de políticas de PowerShell/cmd).
+- [x] Motor Kiro (`vigilante/motores/kiro.mjs`), con aviso si la sesión de Kiro venció.
+- [x] Motor Claude (`vigilante/motores/claude.mjs`) escrito; falta probarlo (Fase 4).
+
+### Fase 3 — Uso diario (siguiente)
+
+Objetivo: usarlo de verdad unos días con Kiro y SmartHome, cargando las tareas a mano o desde Kiro.
+
+1. **`asistente iniciar`**: un solo comando que levanta el tablero, el vigilante y el servidor de
+   adjuntos (`127.0.0.1:6421` → `adjuntos/`), y los cierra juntos.
+2. **Crear tareas desde Kiro**: probar desde el chat de Kiro (IDE y CLI) en SmartHome
+   "creá una tarea en la bandeja: …" con el MCP de usuario, y ajustar `asistente.md` si hace falta.
+3. **Notificaciones de Windows** cuando una tarea queda en `Para revisar` o `Esperando info`, o si el
+   motor falla (por ejemplo, venció el login de Kiro).
+4. **Inicio automático** (Windows: `shell:startup`; Linux: servicio de usuario de systemd).
+5. **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
+   `conocimiento/SmartHome/` lo que no está en el repo.
+6. *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
    en `conocimiento/<proyecto>/casos/`.
 
 **Criterio de salida:**
-- Una tarea nueva de SmartHome termina en `Para revisar` o `Esperando info` sin intervención, con
-  las cuatro secciones completas y **usando información del repo de SmartHome**.
-- Lo mismo con un proyecto que use Claude Code.
+- Una semana de uso real sin tocar el código: las tareas entran a mano o desde Kiro y la IA las
+  procesa sola con el contexto de SmartHome.
 - Una respuesta del usuario (vuelta a `Pendiente`) se reprocesa sola.
-- Los repos de los proyectos quedan sin cambios (`git status` limpio).
-- La IA no vuelve a procesar tareas que no están en `Pendiente`, así que no hay bucles.
+- Los proyectos quedan sin cambios.
 
-### Fase 3 — Capturador MVP (3–5 días, solo Windows)
+### Fase 4 — Otros motores (no bloqueante)
+
+1. **Claude Code** (spike S8): probar `vigilante/motores/claude.mjs` con un proyecto personal;
+   comando de usuario `/procesar-bandeja` como respaldo manual; sumarlo al instalador.
+2. **Kiro IDE** (spike S1b): procesar a mano las tareas de un proyecto desde el chat del IDE con el
+   MCP de usuario; documentar el prompt.
+3. Probar el instalador en Linux.
+
+### Fase 5 — Capturador (al final; 3–5 días, solo Windows)
 
 Flujo al apretar `Ctrl+Alt+A`:
 
@@ -405,9 +409,9 @@ En Linux y macOS no hay capturador: las tareas se crean desde el tablero (**New 
 proyecto) o con `backlog task create --project ...`.
 
 **Criterio de salida:** desde Teams, Slack, Outlook y un navegador, la captura genera una tarea
-correcta, con su proyecto, que la IA procesa sola en la carpeta de ese proyecto (fase 2).
+correcta, con su proyecto, que la IA procesa sola en la carpeta de ese proyecto.
 
-### Fase 4 — Mejoras (según el uso)
+### Fase 6 — Mejoras (según el uso)
 
 - **Captura de zona**: overlay para marcar un rectángulo, como Recortes.
 - **"Enviar a asistente" en el Explorador**: clic derecho → Enviar a (acceso directo en
