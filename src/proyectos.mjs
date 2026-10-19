@@ -3,12 +3,19 @@
 import { existsSync } from "node:fs";
 import { agregarProyecto, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
 import { conectoresDelProyecto, instalarAgente, instalarSteering, permitidas, RUTA_AGENTE, RUTA_STEERING } from "./kiro.mjs";
+import { barras, leerConfigUsuario } from "./rutas.mjs";
 
 // Lo instalado en Kiro (steering y agentes) se actualiza cuando cambian los proyectos
-function actualizarKiro(bandeja) {
+export function actualizarKiro(bandeja) {
+  // Solo la bandeja instalada actualiza Kiro (una bandeja de prueba no debe pisar tus agentes)
+  const instalada = leerConfigUsuario().bandeja;
+  if (!instalada || barras(instalada) !== barras(bandeja)) return [];
   const proyectos = leerConfig(bandeja).proyectos;
   if (existsSync(RUTA_STEERING)) instalarSteering(Object.keys(proyectos));
-  if (existsSync(RUTA_AGENTE)) for (const a of instalarAgente(bandeja, proyectos).avisos) console.log(`Aviso: ${a}`);
+  if (!existsSync(RUTA_AGENTE)) return [];
+  const { avisos } = instalarAgente(bandeja, proyectos);
+  for (const a of avisos) console.log(`Aviso: ${a}`);
+  return avisos;
 }
 
 const textoPermiso = (p) => (Array.isArray(p) ? p.join(", ") : p);

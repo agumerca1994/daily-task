@@ -17,6 +17,7 @@ import { backlog, backlogSpawn } from "../src/backlog.mjs";
 import { leerConfig, rutaInstrucciones } from "../src/bandeja.mjs";
 import { nombreAgente } from "../src/kiro.mjs";
 import { notificar } from "../src/notificar.mjs";
+import { estadoKiro } from "../src/sesion.mjs";
 import { ASISTENTE_MD } from "../src/rutas.mjs";
 
 const aqui = dirname(fileURLToPath(import.meta.url));
@@ -64,7 +65,24 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
       log(r.status === 0 ? `  · ${ev.task.id} sin proyecto: se asigna ${nombre}` : `  ! no se pudo asignar ${nombre} a ${ev.task.id}`);
     }
 
-    encolar(nombre, ev.task.id, () => new Promise((fin) => {
+    encolar(nombre, ev.task.id, async () => {
+      // Sin sesión de Kiro la tarea queda en Pendiente (no se gasta un intento) y se retoma al reconectar
+      if (proyecto.motor === "kiro") {
+        const s = await estadoKiro();
+        if (!s.conectado) {
+          esperandoSesion = true;
+          log(`  ~ ${ev.task.id} espera: Kiro ${s.instalado ? "sin sesión" : "no está instalado"}`);
+          if (Date.now() - ultimoAvisoSesion > 60 * 60 * 1000) {
+            ultimoAvisoSesion = Date.now();
+            avisar("Kiro sin sesión", "Las tareas esperan. Reconectá desde el tablero (arriba a la derecha).");
+          }
+          return;
+        }
+      }
+      await ejecutarMotor();
+    });
+
+    const ejecutarMotor = () => new Promise((fin) => {
       const inicio = Date.now();
       log(`  > ${ev.task.id} -> ${proyecto.motor} en ${nombre}`);
       const p = spawn(process.execPath, [script], {
@@ -93,11 +111,36 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
       p.stderr.on("data", (d) => { error += d; });
       p.on("close", (code) => {
         log(`  < ${ev.task.id} terminó (código ${code}, ${Math.round((Date.now() - inicio) / 1000)} s)`);
-        if (code !== 0) avisar(`${ev.task.id}: falló ${proyecto.motor}`, error.trim().split(/\r?\n/).at(-1) || `código ${code}`);
+        if (code !== 0) {
+          // Si se cortó a mitad de camino (por ejemplo, venció la sesión), vuelve a Pendiente para reintentar
+          const t = backlog(["task", "view", ev.task.id, "--json"], { cwd: bandeja });
+          let estadoActual = null;
+          try { estadoActual = JSON.parse(t.stdout).task.status; } catch { /* sin datos */ }
+          if (estadoActual === "En análisis") {
+            backlog(["task", "edit", ev.task.id, "-s", PENDIENTE], { cwd: bandeja });
+            log(`  · ${ev.task.id} vuelve a Pendiente para reintentar`);
+          }
+          if (/sesión|login/i.test(error)) { esperandoSesion = true; estadoKiro({ forzar: true }); }
+          avisar(`${ev.task.id}: falló ${proyecto.motor}`, error.trim().split(/\r?\n/).at(-1) || `código ${code}`);
+        }
         fin();
       });
-    }));
+    });
   }
+
+  // --- Sesión de Kiro: cuando vuelve, se procesa lo que quedó esperando
+  let esperandoSesion = false;
+  let ultimoAvisoSesion = 0;
+  const revisarSesion = setInterval(async () => {
+    if (!esperandoSesion) return;
+    const s = await estadoKiro({ forzar: true });
+    if (!s.conectado || !anterior) return;
+    esperandoSesion = false;
+    const pendientes = [...anterior.values()].filter((t) => t.status === PENDIENTE);
+    log(`Kiro reconectado: ${pendientes.length} tarea(s) pendiente(s)`);
+    if (pendientes.length) avisar("Kiro reconectado", `Procesando ${pendientes.length} tarea(s) pendiente(s).`);
+    for (const t of pendientes) despachar({ type: "task.created", task: t, inicial: true });
+  }, 30 * 1000);
 
   function despachar(ev) {
     const extra = ev.type === "task.moved" ? ` ${ev.from} -> ${ev.to}` : "";
@@ -140,7 +183,7 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
     log(`backlog --watch terminó (código ${code})`);
     alTerminar(code);
   });
-  return { detener: () => { deteniendo = true; watch.kill(); } };
+  return { detener: () => { deteniendo = true; clearInterval(revisarSesion); watch.kill(); } };
 }
 
 // Objetos JSON completos, uno detrás de otro (pueden venir partidos en varios chunks)

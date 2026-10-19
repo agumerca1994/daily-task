@@ -234,6 +234,59 @@ main { padding: 20px 24px 48px; }
 .error { margin: 0; color: #b91c1c; font-size: 14px; min-height: 1em; }
 .botones { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ---------------------------------------------------------------- Sesión de Kiro */
+.kiro { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--tinta-2); }
+.kiro .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--pendiente); }
+.kiro[data-estado="conectado"] .punto { background: var(--resuelta); }
+.kiro[data-estado="sin-sesion"] { color: var(--espera); font-weight: 600; }
+.kiro[data-estado="sin-sesion"] .punto { background: var(--espera); box-shadow: 0 0 0 4px color-mix(in srgb, var(--espera) 22%, transparent); }
+.kiro[data-estado="esperando"] .punto { background: var(--analisis); animation: latido 1.2s ease-in-out infinite; }
+@keyframes latido { 50% { opacity: .35; } }
+.boton.chico { padding: 4px 10px; font-size: 13px; }
+.kiro[data-estado="sin-sesion"] .boton { border-color: var(--espera); color: var(--espera); }
+
+/* ---------------------------------------------------------------- Configuración */
+.enlace-config { color: var(--tinta-2); font-size: 14px; font-weight: 600; text-decoration: none; padding: 6px 4px; }
+.enlace-config:hover, .enlace-config[aria-current="page"] { color: var(--tinta); text-decoration: underline; text-underline-offset: 4px; }
+.config { padding: 20px 24px 64px; max-width: 920px; }
+.volver { margin: 0 0 6px; font-size: 14px; }
+.volver a { color: var(--azul); text-decoration: none; }
+.conf-bloque { margin-top: 28px; }
+.conf-bloque > .grupo-titulo { margin-bottom: 14px; }
+.conf-bloque > .ayuda { margin: -6px 0 14px; }
+.conf-proyecto {
+  background: var(--hoja); border: 1px solid var(--linea); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px;
+  display: grid; gap: 14px;
+}
+.conf-proyecto header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.conf-proyecto h3 { margin: 0; font: 600 20px/1.2 var(--display); }
+.conf-proyecto .alerta { color: #b91c1c; font-size: 13.5px; margin: 0; }
+.conf-proyecto input, .conf-proyecto select, .conf-nuevo input, .conf-nuevo select, .conf-texto, .conf-general select {
+  width: 100%; font: inherit; font-size: 14px; color: var(--tinta); background: var(--hoja);
+  border: 1px solid var(--linea); border-radius: 8px; padding: 7px 10px;
+}
+.conectores { border: 1px solid var(--linea); border-radius: 10px; overflow: hidden; }
+.conectores .fila-con { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--linea); }
+.conectores .fila-con:first-child { border-top: 0; }
+.conectores .nombre-con { font-family: var(--mono); font-size: 13.5px; }
+.conectores .vacio-con { padding: 12px; color: var(--tinta-2); font-size: 14px; margin: 0; }
+.segmento { display: inline-flex; border: 1px solid var(--linea); border-radius: 8px; overflow: hidden; }
+.segmento label { position: relative; }
+.segmento input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.segmento span { display: block; padding: 4px 12px; font-size: 13px; color: var(--tinta-2); border-left: 1px solid var(--linea); }
+.segmento label:first-child span { border-left: 0; }
+.segmento input:checked + span { background: var(--tinta); color: var(--hoja); font-weight: 600; }
+.segmento input[value="escritura"]:checked + span { background: var(--espera); color: #fff; }
+.segmento input:disabled + span { opacity: .4; cursor: not-allowed; }
+.segmento input:focus-visible + span { outline: 2px solid var(--azul); outline-offset: -2px; }
+.aviso-escritura { margin: 0; font-size: 13px; color: var(--espera); }
+.conf-nuevo { background: var(--hoja); border: 1px dashed var(--linea); border-radius: 12px; padding: 14px 20px; }
+.conf-nuevo summary { cursor: pointer; font-weight: 600; }
+.conf-nuevo form { display: grid; gap: 12px; margin-top: 12px; }
+.conf-texto { min-height: 180px; font-family: var(--mono); font-size: 13px; line-height: 1.5; }
+.conf-general { display: grid; gap: 14px; background: var(--hoja); border: 1px solid var(--linea); border-radius: 12px; padding: 18px 20px; }
+.conf-general .check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+
 /* ---------------------------------------------------------------- Aviso */
 .aviso {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
@@ -249,7 +302,8 @@ main { padding: 20px 24px 48px; }
   .grupo[data-grupo="cerradas"] { grid-column: 1 / -1; }
 }
 @media (max-width: 720px) {
-  main { padding: 16px; }
+  main, .config { padding: 16px; }
+  .conectores .fila-con { grid-template-columns: 1fr; }
   .barra { padding: 10px 16px; }
   .buscar { margin-left: 0; width: 100%; }
   .buscar input { width: 100%; max-width: none; }

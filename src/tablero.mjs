@@ -9,6 +9,8 @@ import { basename, extname, join, normalize, sep } from "node:path";
 import { PUERTO_ADJUNTOS } from "./adjuntos.mjs";
 import { backlog } from "./backlog.mjs";
 import { ESTADOS, leerConfig } from "./bandeja.mjs";
+import { abrirLoginKiro, estadoKiro } from "./sesion.mjs";
+import { borrarProyecto, guardarGeneral, guardarInstrucciones, guardarProyecto, leerConfiguracion, modelosKiro } from "./configuracion.mjs";
 import { REPO } from "./rutas.mjs";
 
 export const PUERTO_TABLERO = 6420;
@@ -176,6 +178,33 @@ export function servirTablero(bandeja, { puerto = PUERTO_TABLERO } = {}) {
         return json(res, 200, { estados: ESTADOS, proyectos: Object.keys(cfg.proyectos), porDefecto: cfg.proyectoPorDefecto, bandeja });
       }
       if (req.method === "GET" && ruta === "/api/tareas") return json(res, 200, listar(bandeja));
+
+      // Sesión de Kiro (solo importa si algún proyecto lo usa)
+      if (req.method === "GET" && ruta === "/api/kiro") {
+        const usaKiro = Object.values(leerConfig(bandeja).proyectos).some((p) => p.motor === "kiro");
+        return json(res, 200, { usaKiro, ...(usaKiro ? await estadoKiro({ forzar: url.searchParams.has("ahora") }) : {}) });
+      }
+      if (req.method === "POST" && ruta === "/api/kiro/login") return json(res, 200, { mensaje: abrirLoginKiro() });
+
+      // Configuración
+      if (req.method === "GET" && ruta === "/api/config") return json(res, 200, leerConfiguracion(bandeja));
+      if (req.method === "GET" && ruta === "/api/modelos") return json(res, 200, modelosKiro());
+      if (req.method === "POST" && ruta === "/api/config/proyecto") {
+        const avisos = guardarProyecto(bandeja, await leerCuerpo(req, 1024 * 1024));
+        return json(res, 200, { ok: true, avisos });
+      }
+      if (req.method === "POST" && ruta === "/api/config/quitar") {
+        const { nombre } = await leerCuerpo(req, 1024 * 1024);
+        return json(res, 200, { ok: true, avisos: borrarProyecto(bandeja, nombre) });
+      }
+      if (req.method === "POST" && ruta === "/api/config/general") {
+        guardarGeneral(bandeja, await leerCuerpo(req, 1024 * 1024));
+        return json(res, 200, { ok: true });
+      }
+      if (req.method === "POST" && ruta === "/api/config/instrucciones") {
+        guardarInstrucciones(bandeja, (await leerCuerpo(req, 1024 * 1024)).texto);
+        return json(res, 200, { ok: true });
+      }
       if (req.method === "GET" && ruta === "/api/eventos") {
         res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
         res.write("retry: 2000\n\n");

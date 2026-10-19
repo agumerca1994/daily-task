@@ -370,6 +370,52 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ---------------------------------------------------------------- Sesión de Kiro
+let kiroEsperando = 0; // mientras el usuario completa el login, se revisa más seguido
+async function revisarKiro(ahora = false) {
+  let s;
+  try { s = await api(`/api/kiro${ahora ? "?ahora" : ""}`); } catch { return; }
+  const caja = $("#kiro");
+  caja.hidden = !s.usaKiro;
+  if (!s.usaKiro) return;
+  const boton = $("#kiro-reconectar");
+  if (s.conectado) {
+    if (kiroEsperando) avisar("Kiro reconectado. Las tareas pendientes se procesan solas.");
+    kiroEsperando = 0;
+    caja.dataset.estado = "conectado";
+    $("#kiro-texto").textContent = "Kiro conectado";
+    caja.title = s.usuario ? `Sesión de ${s.usuario}` : "";
+    boton.hidden = true;
+  } else if (kiroEsperando) {
+    caja.dataset.estado = "esperando";
+    $("#kiro-texto").textContent = "Esperando el inicio de sesión…";
+    boton.hidden = false;
+    boton.textContent = "Abrir de nuevo";
+  } else {
+    caja.dataset.estado = "sin-sesion";
+    $("#kiro-texto").textContent = s.instalado ? "Kiro sin sesión" : "Kiro no está instalado";
+    caja.title = "Mientras Kiro no tenga sesión, las tareas esperan en Pendiente.";
+    boton.hidden = !s.instalado;
+    boton.textContent = "Reconectar";
+  }
+}
+
+$("#kiro-reconectar").addEventListener("click", async () => {
+  try {
+    const { mensaje } = await api("/api/kiro/login", { method: "POST", body: "{}" });
+    kiroEsperando = Date.now();
+    avisar(mensaje);
+    revisarKiro();
+  } catch (e) { avisar(e.message); }
+});
+// Esperando el login: se fuerza la revisión cada 5 s durante 10 minutos. Si no, el servidor responde
+// con lo que revisó en el último minuto (no vuelve a consultar a Kiro).
+setInterval(() => {
+  if (kiroEsperando && Date.now() - kiroEsperando > 10 * 60 * 1000) kiroEsperando = 0;
+  revisarKiro(!!kiroEsperando);
+}, 5000);
+revisarKiro();
+
 // Cambios en vivo (la IA mueve tareas, Kiro crea otras...)
 let recarga;
 const eventos = new EventSource("/api/eventos");

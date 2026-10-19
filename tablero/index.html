@@ -18,10 +18,22 @@
       <span class="oculto">Buscar</span>
       <input id="buscar" type="search" placeholder="Buscar por título o número" autocomplete="off">
     </label>
+    <div class="kiro" id="kiro" hidden>
+      <span class="punto" aria-hidden="true"></span>
+      <span id="kiro-texto">Kiro</span>
+      <button class="boton chico" id="kiro-reconectar" type="button" hidden>Reconectar</button>
+    </div>
+    <a class="enlace-config" id="enlace-config" href="#configuracion">Configuración</a>
     <button class="boton primario" id="nueva" type="button">Nueva tarea</button>
   </header>
 
-  <main>
+  <section class="config" id="vista-config" hidden aria-labelledby="config-titulo">
+    <p class="volver"><a href="#">&lt; Volver al tablero</a></p>
+    <h1 class="situacion" id="config-titulo">Configuración</h1>
+    <div id="config-cuerpo"><p class="nota-estado">Cargando…</p></div>
+  </section>
+
+  <main id="vista-tablero">
     <p class="situacion" id="situacion" aria-live="polite">Cargando…</p>
 
     <div class="tablero" id="tablero">
@@ -136,5 +148,6 @@
   <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
   <script src="app.js"></script>
+  <script src="config.js"></script>
 </body>
 </html>

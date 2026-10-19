@@ -382,9 +382,20 @@ Objetivo: usarlo de verdad unos días con Kiro y SmartHome, cargando las tareas 
    formulario de *Nueva tarea* (proyecto, prioridad, origen, quién lo pidió, link, etiquetas, nota
    para la IA e imágenes), actualización en vivo y modo claro/oscuro. Lee los archivos de las tareas y
    escribe siempre con la CLI de Backlog.md.
-9. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
+9. [x] **Conectores y configuración de la IA**: conectores del proyecto (Jira, Confluence…) por
+   proyecto con permiso lectura / escritura / lista de herramientas, con un agente de Kiro por proyecto
+   que usa el MCP del propio proyecto (sin copiar credenciales); Kiro bloquea lo no habilitado
+   (probado). Escritura en dos pasos (acción propuesta y aprobación). Sección **Configuración** del
+   tablero: carpeta, IA, modelo (con costo en créditos), conectores, instrucciones propias, tareas sin
+   proyecto y notificaciones. Solo la bandeja instalada modifica los agentes de Kiro.
+10. [x] **Sesión de Kiro en el tablero**: indicador conectado / sin sesión y botón *Reconectar* (abre
+   `kiro-cli login` en una consola, ya completado con el proveedor y la región recordados de la
+   última sesión: el login de Kiro no funciona sin terminal, probado). Sin sesión, las tareas esperan
+   en Pendiente (un aviso por hora) y se procesan solas al reconectar; si una tarea se corta en *En
+   análisis*, vuelve a Pendiente.
+11. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
    `conocimiento/SmartHome/` lo que no está en el repo.
-10. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
+12. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
    en `conocimiento/<proyecto>/casos/`.
 
 **Criterio de salida:**

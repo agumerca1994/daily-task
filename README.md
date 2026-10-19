@@ -111,10 +111,31 @@ node bin/asistente.mjs proyecto quitar <nombre>
 node bin/asistente.mjs proyecto por-defecto <nombre|ninguno>
 ```
 
+## Configuración
+
+En el tablero, **Configuración** (arriba a la derecha): por proyecto, la carpeta, la IA que lo atiende
+(kiro o claude), el modelo (con su costo en créditos) y los conectores; tus instrucciones propias para
+la IA; qué pasa con las tareas sin proyecto y las notificaciones. Los cambios aplican desde la próxima
+tarea, sin reiniciar.
+
+## Sesión de Kiro
+
+Arriba a la derecha del tablero se ve si Kiro tiene sesión (**● Kiro conectado** / **● Kiro sin sesión**).
+Si se desconecta (por ejemplo, fuera del horario laboral):
+
+- Las tareas nuevas **esperan en Pendiente**: no se gastan intentos ni quedan trabadas, y llega un solo
+  aviso por hora.
+- **Reconectar** abre la ventana de inicio de sesión de Kiro ya completada con los datos de tu cuenta
+  (se recuerdan de la última sesión): confirmás con Enter y aprobás en el navegador. El login de Kiro
+  necesita una terminal, por eso se abre esa ventana.
+- Al volver la sesión, el asistente procesa solo lo que quedó pendiente y avisa.
+- Si una tarea se corta a mitad de camino porque venció la sesión, vuelve a Pendiente para reintentar.
+
 ## Conectores (Jira, Confluence...)
 
 La IA trabaja en la carpeta de cada proyecto, pero por defecto **no** usa sus conectores (los
-servidores MCP de `<proyecto>/.kiro/settings/mcp.json`). Se habilitan por proyecto:
+servidores MCP de `<proyecto>/.kiro/settings/mcp.json`). Se habilitan por proyecto desde el tablero
+(**Configuración**: No / Lectura / Escritura para cada conector) o por comando:
 
 ```bash
 node bin/asistente.mjs proyecto conectores SmartHome                              # ver disponibles y habilitados
