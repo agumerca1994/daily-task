@@ -1,0 +1,14 @@
+# Logs del vigilante
+*.log
+
+# Node
+node_modules/
+
+# .NET (capturador)
+bin/
+obj/
+*.user
+
+# Sistema
+.DS_Store
+Thumbs.db
