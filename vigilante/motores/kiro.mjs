@@ -13,7 +13,11 @@ import { promptProcesar, terminar } from "./comun.mjs";
 const kiro = buscarKiro();
 if (!kiro) terminar(1, "No encuentro Kiro CLI (kiro-cli). Instalalo o definí KIRO_BIN.");
 
-const args = ["chat", "--no-interactive", "--agent", process.env.KIRO_AGENT ?? AGENTE, "--require-mcp-startup"];
+// Agente del proyecto (con sus conectores) o el general. Con conectores no se exige que arranquen
+// todos los MCP: el proyecto puede tener alguno que no esté disponible (y no se usa).
+const agente = process.env.KIRO_AGENT || process.env.PROJECT_AGENT || AGENTE;
+const args = ["chat", "--no-interactive", "--agent", agente];
+if (agente === AGENTE) args.push("--require-mcp-startup");
 if (process.env.KIRO_TRUST) args.push(`--trust-tools=${process.env.KIRO_TRUST}`);
 const modelo = process.env.KIRO_MODEL || process.env.PROJECT_MODEL;
 if (modelo) args.push("--model", modelo);

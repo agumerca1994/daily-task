@@ -55,7 +55,7 @@ export async function instalarDesdeArchivo(ruta) {
     if (c.kiro) {
       if (!buscarKiro()) paso("AVISO: no encontré Kiro CLI; instalalo y volvé a ejecutar el instalador");
       else {
-        instalarAgente(bandeja);
+        instalarAgente(bandeja, leerConfig(bandeja).proyectos);
         registrarMcpUsuario(bandeja);
         instalarSteering(Object.keys(leerConfig(bandeja).proyectos));
         paso("OK: conectado con Kiro (agente, acceso a la bandeja desde el chat e instrucciones)");
@@ -166,7 +166,7 @@ Si cargás un solo proyecto, todas las tareas van a ese.`);
   - el agente que procesa las tareas,
   - el acceso a la bandeja desde el chat de Kiro, para que le puedas decir "creá una tarea en la bandeja: ..."`);
       if (await confirmar("¿Conectar con Kiro?")) {
-        instalarAgente(bandeja);
+        instalarAgente(bandeja, leerConfig(bandeja).proyectos);
         if (estadoMcpUsuario(bandeja) !== "distinto" || (await confirmar(
           "  Kiro ya apuntaba a otra bandeja. ¿Cambiarlo a esta?", true))) registrarMcpUsuario(bandeja);
         instalarSteering(Object.keys(leerConfig(bandeja).proyectos));

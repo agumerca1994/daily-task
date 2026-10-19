@@ -1,7 +1,7 @@
 // Integración con Kiro: agente de usuario `asistente-tareas` (para Kiro CLI) y MCP `backlog` a nivel
 // de usuario (para crear y consultar tareas desde el chat de Kiro IDE o CLI en cualquier proyecto).
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { comandoBacklog } from "./backlog.mjs";
@@ -38,17 +38,75 @@ const servidorBacklog = (bandeja) => {
   return { command, args: [...args, "mcp", "start", "--cwd", bandeja] };
 };
 
-/** Genera el agente de Kiro CLI desde la plantilla, con las rutas de esta PC. */
-export function instalarAgente(bandeja) {
-  const plantilla = readFileSync(join(REPO, "asistente", "kiro-agent.json"), "utf8");
-  const agente = JSON.parse(plantilla);
+function agenteBase(bandeja) {
+  const agente = JSON.parse(readFileSync(join(REPO, "asistente", "kiro-agent.json"), "utf8"));
   agente.mcpServers = { backlog: servidorBacklog(bandeja) };
   agente.resources = agente.resources.map((r) =>
     r.replace("{{ASISTENTE_MD}}", ASISTENTE_MD.replace(/\\/g, "/")).replace("{{INSTRUCCIONES_MD}}", rutaInstrucciones(bandeja)),
   );
-  mkdirSync(dirname(RUTA_AGENTE), { recursive: true });
-  writeFileSync(RUTA_AGENTE, JSON.stringify(agente, null, 2) + "\n");
-  return RUTA_AGENTE;
+  return agente;
+}
+
+// ---------------------------------------------------------------- Conectores por proyecto
+// Cada proyecto puede habilitar conectores (servidores MCP) de su propia configuración de Kiro
+// (<proyecto>/.kiro/settings/mcp.json), con permiso:
+//   "lectura"    -> solo las herramientas de consulta conocidas (Jira: jira_get, Confluence: conf_get)
+//   "escritura"  -> todas las herramientas del conector
+//   ["a", "b"]   -> exactamente esas herramientas
+// Para esos proyectos se genera un agente propio (asistente-tareas-<proyecto>) que usa la
+// configuración MCP del proyecto (includeMcpJson): las credenciales no se copian a ningún lado.
+// Kiro bloquea en modo no interactivo cualquier herramienta que no esté permitida (probado).
+const LECTURA = [
+  { patron: /jira/i, herramientas: ["jira_get"] },
+  { patron: /confluence|conf/i, herramientas: ["conf_get"] },
+];
+
+export const slug = (nombre) => nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+export const nombreAgente = (proyecto, cfg) => (cfg?.conectores && Object.keys(cfg.conectores).length ? `${AGENTE}-${slug(proyecto)}` : AGENTE);
+
+/** Conectores (servidores MCP) definidos en la configuración de Kiro del proyecto. */
+export function conectoresDelProyecto(carpeta) {
+  try {
+    const cfg = JSON.parse(readFileSync(join(carpeta, ".kiro", "settings", "mcp.json"), "utf8"));
+    return Object.entries(cfg.mcpServers ?? {}).filter(([, v]) => !v.disabled).map(([k]) => k);
+  } catch { return []; }
+}
+
+/** Herramientas permitidas para un conector según el permiso; null si "lectura" no se sabe resolver. */
+export function permitidas(servidor, permiso) {
+  if (Array.isArray(permiso)) return permiso.map((h) => `@${servidor}/${h}`);
+  if (permiso === "escritura") return [`@${servidor}`];
+  const conocido = LECTURA.find((l) => l.patron.test(servidor));
+  return conocido ? conocido.herramientas.map((h) => `@${servidor}/${h}`) : null;
+}
+
+/** Genera el agente base y uno por cada proyecto con conectores; borra los que ya no corresponden. */
+export function instalarAgente(bandeja, proyectos = {}) {
+  const dir = dirname(RUTA_AGENTE);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(RUTA_AGENTE, JSON.stringify(agenteBase(bandeja), null, 2) + "\n");
+  const vigentes = new Set([`${AGENTE}.json`]);
+  const avisos = [];
+  for (const [nombre, p] of Object.entries(proyectos)) {
+    const conectores = Object.entries(p.conectores ?? {});
+    if (!conectores.length) continue;
+    const agente = agenteBase(bandeja);
+    agente.name = nombreAgente(nombre, p);
+    agente.description = `Asistente de tareas del proyecto ${nombre} (con ${conectores.map(([s, x]) => `${s}: ${Array.isArray(x) ? x.join("+") : x}`).join(", ")})`;
+    agente.includeMcpJson = true;
+    for (const [servidor, permiso] of conectores) {
+      const lista = permitidas(servidor, permiso);
+      if (!lista) { avisos.push(`${nombre}/${servidor}: no sé qué herramientas son de lectura; indicalas a mano`); continue; }
+      agente.tools.push(`@${servidor}`);
+      agente.allowedTools.push(...lista);
+    }
+    writeFileSync(join(dir, `${agente.name}.json`), JSON.stringify(agente, null, 2) + "\n");
+    vigentes.add(`${agente.name}.json`);
+  }
+  for (const f of readdirSync(dir)) {
+    if (f.startsWith(`${AGENTE}-`) && f.endsWith(".json") && !vigentes.has(f)) rmSync(join(dir, f), { force: true });
+  }
+  return { ruta: RUTA_AGENTE, avisos };
 }
 
 /** Estado del MCP `backlog` en la config de usuario de Kiro: "falta", "igual" o "distinto". */

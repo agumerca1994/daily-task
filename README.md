@@ -70,6 +70,14 @@ El ícono es un programa chico (`windows/AsistenteTareas.cs`) que el instalador 
 con el compilador de C# que trae Windows; no se descarga nada. Si no se puede compilar, el asistente
 funciona igual, pero muestra una consola minimizada un instante al iniciar.
 
+**El tablero** (http://127.0.0.1:6420) está agrupado por quién tiene que actuar: *Te toca* (Para
+revisar, Esperando info), *La tiene la IA* (Pendiente, En análisis) y *Cerradas*. Arriba se filtra por
+proyecto y se busca por título o número. Al abrir una tarea se ve el mensaje, las imágenes, el link al
+mensaje original y el seguimiento (análisis de la IA y tus respuestas); el borrador de respuesta tiene
+un botón *Copiar* (texto limpio, listo para pegar). Según el estado: *Enviar a la IA* (responder lo
+que falta), *Marcar resuelta*, *Pedir otra vuelta* o *Reabrir*; además *Mover a* y *Archivar*. Tecla
+`n`: nueva tarea. El tablero de Backlog.md sigue disponible con `iniciar --ventana --tablero-backlog`.
+
 El ciclo de una tarea:
 
 1. **La creás** (ver abajo). Queda en **Pendiente**.
@@ -84,14 +92,11 @@ El ciclo de una tarea:
    - Si está bien: pasala a **Resuelta**.
 
 Para crear tareas:
-- **En el tablero**: *New Task*. Título, descripción (pegá el mensaje tal cual) y, si tenés más de un
-  proyecto, el proyecto. El estado por defecto ya es *Pendiente*.
+- **En el tablero**: *Nueva tarea*. Título, mensaje (pegado tal cual), proyecto, prioridad, por dónde
+  llegó y quién lo pidió, link al mensaje, etiquetas, una nota para la IA e imágenes (arrastrarlas,
+  pegarlas con Ctrl+V o elegirlas).
 - **Desde el chat de Kiro** (IDE o CLI), en cualquier proyecto: *"creá una tarea en la bandeja: …"*.
 - **Por línea de comandos**, desde la bandeja: `backlog task create "Título" --project SmartHome -d "..."`.
-
-Imágenes: el tablero no permite adjuntarlas. Guardalas en `adjuntos/<id de la tarea>/` (por ejemplo
-`adjuntos/task-12/captura.png`): la IA las lee de ahí, y en el tablero se ven si las enlazás en la
-descripción como `![captura](http://127.0.0.1:6421/task-12/captura.png)`.
 
 Por línea de comandos: `node bin/asistente.mjs iniciar | detener | actividad`, e `iniciar --ventana`
 para tener todo en una ventana con la actividad a la vista. Para que arranque solo al iniciar
@@ -105,6 +110,27 @@ node bin/asistente.mjs proyecto agregar <nombre> <carpeta> [--motor kiro|claude]
 node bin/asistente.mjs proyecto quitar <nombre>
 node bin/asistente.mjs proyecto por-defecto <nombre|ninguno>
 ```
+
+## Conectores (Jira, Confluence...)
+
+La IA trabaja en la carpeta de cada proyecto, pero por defecto **no** usa sus conectores (los
+servidores MCP de `<proyecto>/.kiro/settings/mcp.json`). Se habilitan por proyecto:
+
+```bash
+node bin/asistente.mjs proyecto conectores SmartHome                              # ver disponibles y habilitados
+node bin/asistente.mjs proyecto conectores SmartHome jira=lectura confluence=lectura
+node bin/asistente.mjs proyecto conectores SmartHome jira=escritura               # crear/editar (con aprobación)
+node bin/asistente.mjs proyecto conectores SmartHome ninguno
+```
+
+- **lectura**: solo consultar (Jira: `jira_get`, Confluence: `conf_get`). Para otros conectores se
+  indican las herramientas a mano: `postman=getCollection+getEnvironment`.
+- **escritura**: todas las herramientas del conector. Aun así, cuando una tarea pide crear o
+  modificar algo, la IA primero escribe en la tarea la *Acción propuesta* y la deja en *Para revisar*;
+  solo la ejecuta cuando respondés aprobándola.
+- Las credenciales no se copian: se genera un agente de Kiro por proyecto
+  (`~/.kiro/agents/asistente-tareas-<proyecto>.json`) que usa la configuración del propio proyecto, y
+  Kiro bloquea cualquier herramienta no habilitada.
 
 ## Qué hay en la bandeja
 

@@ -22,6 +22,9 @@ Comandos:
   proyecto agregar <nombre> <carpeta> [--motor kiro|claude] [--modelo <modelo>]
   proyecto quitar <nombre>
   proyecto por-defecto <nombre|ninguno>
+  proyecto conectores <nombre> [servidor=lectura|escritura|herr1+herr2 ...|ninguno]
+      Qué conectores del proyecto (Jira, Confluence...) puede usar la IA y con qué permiso.
+      Sin más argumentos, muestra los disponibles y los habilitados.
   iniciar [--no-abrir] [--ventana]
       Inicia el asistente en segundo plano (tablero http://127.0.0.1:6420, vigilante y adjuntos
       http://127.0.0.1:6421) y abre el tablero. Si ya está corriendo, solo abre el tablero.

@@ -15,6 +15,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { backlog, backlogSpawn } from "../src/backlog.mjs";
 import { leerConfig, rutaInstrucciones } from "../src/bandeja.mjs";
+import { nombreAgente } from "../src/kiro.mjs";
 import { notificar } from "../src/notificar.mjs";
 import { ASISTENTE_MD } from "../src/rutas.mjs";
 
@@ -78,6 +79,8 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
           PROJECT_NAME: nombre,
           PROJECT_DIR: proyecto.carpeta,
           PROJECT_MODEL: proyecto.modelo ?? "",
+          PROJECT_AGENT: nombreAgente(nombre, proyecto),
+          PROJECT_CONECTORES: Object.entries(proyecto.conectores ?? {}).map(([s, x]) => `${s} (${Array.isArray(x) ? x.join("+") : x})`).join(", "),
           ASISTENTE_MD: ASISTENTE_MD,
           INSTRUCCIONES_MD: rutaInstrucciones(bandeja),
         },

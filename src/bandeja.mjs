@@ -79,14 +79,34 @@ export function validarNombre(nombre) {
   }
 }
 
-export function agregarProyecto(bandeja, { nombre, carpeta, motor = "kiro", modelo }) {
+export function agregarProyecto(bandeja, { nombre, carpeta, motor = "kiro", modelo, conectores }) {
   validarNombre(nombre);
   if (!carpeta || !existsSync(carpeta)) throw new Error(`No existe la carpeta del proyecto: ${carpeta}`);
   if (!MOTORES.includes(motor)) throw new Error(`Motor inválido: ${motor} (opciones: ${MOTORES.join(", ")})`);
   const cfg = leerConfig(bandeja);
-  cfg.proyectos[nombre] = { carpeta: barras(carpeta), motor, ...(modelo ? { modelo } : {}) };
+  const antes = cfg.proyectos[nombre] ?? {};
+  // Si no se indican conectores, se conservan los que tenía (reinstalar no los borra)
+  const con = conectores ?? antes.conectores;
+  cfg.proyectos[nombre] = {
+    carpeta: barras(carpeta), motor, ...(modelo ? { modelo } : {}), ...(con && Object.keys(con).length ? { conectores: con } : {}),
+  };
   guardarConfig(bandeja, cfg);
   return cfg.proyectos[nombre];
+}
+
+/** Define los conectores de un proyecto: { servidor: "lectura" | "escritura" | ["herramienta", ...] }. */
+export function definirConectores(bandeja, nombre, conectores) {
+  const cfg = leerConfig(bandeja);
+  const p = cfg.proyectos[nombre];
+  if (!p) throw new Error(`No existe el proyecto ${nombre}`);
+  for (const [s, permiso] of Object.entries(conectores)) {
+    if (!Array.isArray(permiso) && !["lectura", "escritura"].includes(permiso)) {
+      throw new Error(`Permiso inválido para ${s}: ${permiso} (lectura, escritura o una lista de herramientas)`);
+    }
+  }
+  if (Object.keys(conectores).length) p.conectores = conectores; else delete p.conectores;
+  guardarConfig(bandeja, cfg);
+  return p;
 }
 
 export function quitarProyecto(bandeja, nombre) {

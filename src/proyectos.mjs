@@ -1,12 +1,17 @@
-// `asistente proyecto ...`: qué proyectos atiende la bandeja, en qué carpeta y con qué motor.
+// `asistente proyecto ...`: qué proyectos atiende la bandeja, en qué carpeta, con qué motor y con qué
+// conectores (Jira, Confluence...) del propio proyecto.
 import { existsSync } from "node:fs";
-import { agregarProyecto, guardarConfig, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
-import { instalarSteering, RUTA_STEERING } from "./kiro.mjs";
+import { agregarProyecto, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
+import { conectoresDelProyecto, instalarAgente, instalarSteering, permitidas, RUTA_AGENTE, RUTA_STEERING } from "./kiro.mjs";
 
-// Si el steering global de Kiro está instalado, se actualiza con la lista de proyectos
-function actualizarSteering(bandeja) {
-  if (existsSync(RUTA_STEERING)) instalarSteering(Object.keys(leerConfig(bandeja).proyectos));
+// Lo instalado en Kiro (steering y agentes) se actualiza cuando cambian los proyectos
+function actualizarKiro(bandeja) {
+  const proyectos = leerConfig(bandeja).proyectos;
+  if (existsSync(RUTA_STEERING)) instalarSteering(Object.keys(proyectos));
+  if (existsSync(RUTA_AGENTE)) for (const a of instalarAgente(bandeja, proyectos).avisos) console.log(`Aviso: ${a}`);
 }
+
+const textoPermiso = (p) => (Array.isArray(p) ? p.join(", ") : p);
 
 export function listarProyectos(bandeja) {
   const cfg = leerConfig(bandeja);
@@ -15,22 +20,42 @@ export function listarProyectos(bandeja) {
   for (const n of nombres) {
     const p = cfg.proyectos[n];
     const marca = cfg.proyectoPorDefecto === n ? " (por defecto)" : "";
-    console.log(`- ${n}${marca}: ${p.motor}${p.modelo ? ` / ${p.modelo}` : ""} en ${p.carpeta}`);
+    const con = Object.entries(p.conectores ?? {}).map(([s, x]) => `${s}: ${textoPermiso(x)}`).join(", ");
+    console.log(`- ${n}${marca}: ${p.motor}${p.modelo ? ` / ${p.modelo}` : ""} en ${p.carpeta}${con ? ` — conectores: ${con}` : ""}`);
   }
 }
 
-export function comandoProyecto(bandeja, [accion, nombre, carpeta], op) {
+/** Muestra los conectores disponibles en el proyecto y los habilitados. */
+function mostrarConectores(bandeja, nombre) {
+  const p = leerConfig(bandeja).proyectos[nombre];
+  if (!p) throw new Error(`No existe el proyecto ${nombre}`);
+  const disponibles = conectoresDelProyecto(p.carpeta);
+  console.log(`Conectores de ${nombre} (${p.carpeta}\\.kiro\\settings\\mcp.json):`);
+  if (!disponibles.length) console.log("  (el proyecto no tiene conectores configurados en Kiro)");
+  for (const s of disponibles) {
+    const permiso = p.conectores?.[s];
+    console.log(`  - ${s}: ${permiso ? textoPermiso(permiso) : "no habilitado"}`);
+  }
+  console.log(`\nPara cambiarlos: asistente proyecto conectores ${nombre} jira=lectura confluence=lectura
+  lectura   solo consultar (Jira: jira_get, Confluence: conf_get)
+  escritura todas las herramientas del conector (crear/editar); la IA igual pide tu aprobación
+            en la tarea antes de crear o modificar algo
+  a+b+c     exactamente esas herramientas, por ejemplo jira=jira_get+jira_post
+  ninguno   quita todos los conectores del proyecto`);
+}
+
+export function comandoProyecto(bandeja, [accion, nombre, carpeta, ...resto], op) {
   switch (accion) {
     case "listar": case undefined:
       return listarProyectos(bandeja);
     case "agregar": {
       const p = agregarProyecto(bandeja, { nombre, carpeta, motor: op.motor ?? "kiro", modelo: op.modelo });
-      actualizarSteering(bandeja);
+      actualizarKiro(bandeja);
       return console.log(`Proyecto ${nombre} -> ${p.motor} en ${p.carpeta}`);
     }
     case "quitar":
       quitarProyecto(bandeja, nombre);
-      actualizarSteering(bandeja);
+      actualizarKiro(bandeja);
       return console.log(`Proyecto ${nombre} quitado (sus tareas quedan en la bandeja).`);
     case "por-defecto": {
       const cfg = leerConfig(bandeja);
@@ -40,7 +65,29 @@ export function comandoProyecto(bandeja, [accion, nombre, carpeta], op) {
       return console.log(cfg.proyectoPorDefecto
         ? `Las tareas sin proyecto van a ${nombre}.` : "Las tareas sin proyecto no se procesan.");
     }
+    case "conectores": {
+      // asistente proyecto conectores <nombre> [servidor=permiso ...] | ninguno
+      const pares = [carpeta, ...resto].filter(Boolean);
+      if (!pares.length) return mostrarConectores(bandeja, nombre);
+      const cfg = leerConfig(bandeja).proyectos[nombre];
+      if (!cfg) throw new Error(`No existe el proyecto ${nombre}`);
+      const disponibles = conectoresDelProyecto(cfg.carpeta);
+      const conectores = {};
+      if (pares[0] !== "ninguno") {
+        for (const par of pares) {
+          const [s, v] = par.split("=");
+          if (!s || !v) throw new Error(`Formato: servidor=permiso (recibí "${par}")`);
+          if (!disponibles.includes(s)) throw new Error(`${nombre} no tiene el conector "${s}". Disponibles: ${disponibles.join(", ") || "ninguno"}`);
+          const permiso = ["lectura", "escritura"].includes(v) ? v : v.split("+");
+          if (!permitidas(s, permiso)) throw new Error(`No sé cuáles herramientas de "${s}" son de lectura: indicalas, por ejemplo ${s}=herramienta1+herramienta2`);
+          conectores[s] = permiso;
+        }
+      }
+      definirConectores(bandeja, nombre, conectores);
+      actualizarKiro(bandeja);
+      return mostrarConectores(bandeja, nombre);
+    }
     default:
-      throw new Error(`Acción desconocida: ${accion} (listar, agregar, quitar, por-defecto; motores: ${MOTORES.join(", ")})`);
+      throw new Error(`Acción desconocida: ${accion} (listar, agregar, quitar, por-defecto, conectores; motores: ${MOTORES.join(", ")})`);
   }
 }

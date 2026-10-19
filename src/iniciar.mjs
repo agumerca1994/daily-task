@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { abrirNavegador } from "./accesos.mjs";
 import { pedirDetener, servirAdjuntos, PUERTO_ADJUNTOS, yaCorriendo } from "./adjuntos.mjs";
 import { backlogSpawn } from "./backlog.mjs";
+import { servirTablero } from "./tablero.mjs";
 import { notificar } from "./notificar.mjs";
 import { REPO } from "./rutas.mjs";
 import { vigilar } from "../vigilante/vigilante.mjs";
@@ -109,18 +110,23 @@ async function correr(bandeja, op) {
     if (op.servicio && codigo === 0) avisar("Asistente de tareas detenido", "").finally(fin); else fin();
   };
 
-  // Tablero (Backlog.md no abre el navegador solo: lo abre el lanzador o, con --ventana, esta función)
-  const tablero = backlogSpawn(["browser", "--port", String(op.puerto ?? PUERTO_TABLERO), "--no-open"], { cwd: bandeja });
-  let abierto = false;
-  tablero.stdout.on("data", (d) => {
-    if (abierto || !/https?:\/\//.test(d.toString())) return;
-    abierto = true;
-    console.log(`Tablero:   ${url}`);
-    if (op.ventana && !op["no-abrir"]) abrirNavegador(url);
-  });
-  tablero.stderr.on("data", (d) => console.error(`tablero: ${d.toString().trim()}`));
-  tablero.on("close", (code) => { if (!cerrando) { console.error(`El tablero se cerró (código ${code})`); cerrar(1); } });
-  procesos.push(() => tablero.kill());
+  // Tablero: el propio (en español) o, con --tablero-backlog, el de Backlog.md
+  if (op["tablero-backlog"]) {
+    const tablero = backlogSpawn(["browser", "--port", String(op.puerto ?? PUERTO_TABLERO), "--no-open"], { cwd: bandeja });
+    tablero.stderr.on("data", (d) => console.error(`tablero: ${d.toString().trim()}`));
+    tablero.on("close", (code) => { if (!cerrando) { console.error(`El tablero se cerró (código ${code})`); cerrar(1); } });
+    procesos.push(() => tablero.kill());
+  } else {
+    try {
+      const server = await servirTablero(bandeja, { puerto: op.puerto ? Number(op.puerto) : PUERTO_TABLERO });
+      procesos.push(() => server.close());
+    } catch (e) {
+      console.error(`No se pudo levantar el tablero (${e.code ?? e.message}).`);
+      return cerrar(1);
+    }
+  }
+  console.log(`Tablero:   ${url}`);
+  if (op.ventana && !op["no-abrir"]) abrirNavegador(url);
 
   // Adjuntos (y pedido de cierre de `asistente detener`)
   try {

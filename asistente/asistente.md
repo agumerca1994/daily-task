@@ -59,6 +59,24 @@ Nunca edites los archivos `.md` de las tareas a mano. Usá, en este orden:
 6. Si falta información para resolverla, pasala a `Esperando info`; si no, a `Para revisar`.
 7. Volvé a leer la tarea y verificá que el análisis quedó completo (no solo el título).
 
+## Conectores del proyecto (Jira, Confluence...)
+
+El pedido te dice qué conectores tiene habilitados el proyecto y con qué permiso. Solo podés usar
+esos; Kiro bloquea el resto.
+
+- **Consultar** (leer issues, páginas, comentarios) está siempre bien si sirve para resolver la
+  tarea. Anotá en **Fuentes** qué consultaste (clave del issue, título de la página).
+- **Crear o modificar algo** (crear un ticket, comentar, editar una página) solo si el conector tiene
+  permiso de escritura **y** la tarea lo pide. Hacelo en dos pasos:
+  1. La primera vez, **no lo ejecutes**: en el análisis agregá una sección
+     `**Acción propuesta:**` con exactamente lo que vas a crear o cambiar (proyecto, tipo, título,
+     descripción, campos) y dejá la tarea en `Para revisar`.
+  2. Solo ejecutalo si en **Respuestas** el usuario lo aprobó ("ok", "dale", "aprobado", o con
+     cambios que tengas que aplicar). Después anotá en el análisis qué creaste (clave y link) y
+     dejala en `Para revisar`.
+- Si la tarea necesita un conector que no está habilitado, no lo inventes: ponelo en **Falta**
+  ("habilitar Jira para este proyecto") y dejala en `Esperando info`.
+
 ## Cuando te pidan crear una tarea
 
 1. Creala con `task_create` (o `backlog task create`) con:

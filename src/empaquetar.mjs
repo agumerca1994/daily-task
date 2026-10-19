@@ -12,7 +12,7 @@ import { compilarInstalador, RUTA_INSTALADOR } from "./icono.mjs";
 import { REPO } from "./rutas.mjs";
 
 const RAIZ = "asistente-tareas";
-const INCLUIR = ["bin", "src", "vigilante", "asistente", "windows", "package.json", "README.md", "instalar.cmd", "instalar.sh"];
+const INCLUIR = ["bin", "src", "vigilante", "asistente", "windows", "tablero", "package.json", "README.md", "instalar.cmd", "instalar.sh"];
 
 function archivos(ruta) {
   const info = statSync(ruta);

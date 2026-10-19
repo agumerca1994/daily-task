@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bandeja de tareas</title>
+  <link rel="icon" href="icono.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="marca">
+      <img src="icono.svg" alt="" width="28" height="28">
+      <span>Bandeja de tareas</span>
+    </div>
+    <nav class="proyectos" id="proyectos" aria-label="Proyecto"></nav>
+    <label class="buscar">
+      <span class="oculto">Buscar</span>
+      <input id="buscar" type="search" placeholder="Buscar por título o número" autocomplete="off">
+    </label>
+    <button class="boton primario" id="nueva" type="button">Nueva tarea</button>
+  </header>
+
+  <main>
+    <p class="situacion" id="situacion" aria-live="polite">Cargando…</p>
+
+    <div class="tablero" id="tablero">
+      <section class="grupo" data-grupo="vos" aria-labelledby="g-vos">
+        <h2 class="grupo-titulo" id="g-vos">Te toca</h2>
+        <div class="columnas">
+          <div class="columna" data-estado="Para revisar"></div>
+          <div class="columna" data-estado="Esperando info"></div>
+        </div>
+      </section>
+      <section class="grupo" data-grupo="ia" aria-labelledby="g-ia">
+        <h2 class="grupo-titulo" id="g-ia">La tiene la IA</h2>
+        <div class="columnas">
+          <div class="columna" data-estado="Pendiente"></div>
+          <div class="columna" data-estado="En análisis"></div>
+        </div>
+      </section>
+      <section class="grupo" data-grupo="cerradas" aria-labelledby="g-cerradas">
+        <h2 class="grupo-titulo" id="g-cerradas">Cerradas</h2>
+        <div class="columnas">
+          <div class="columna" data-estado="Resuelta"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Detalle de una tarea -->
+  <div class="velo" id="velo" hidden></div>
+  <aside class="panel" id="panel" aria-labelledby="panel-titulo" hidden>
+    <div class="panel-cabeza">
+      <button class="cerrar" id="cerrar-panel" type="button" aria-label="Cerrar">×</button>
+      <div class="panel-meta" id="panel-meta"></div>
+      <h2 id="panel-titulo"></h2>
+      <div class="sello" id="panel-sello"></div>
+    </div>
+    <div class="panel-cuerpo" id="panel-cuerpo"></div>
+    <div class="panel-acciones" id="panel-acciones"></div>
+  </aside>
+
+  <!-- Nueva tarea -->
+  <dialog class="formulario" id="dialogo" aria-labelledby="dialogo-titulo">
+    <form id="form-nueva" method="dialog" novalidate>
+      <h2 id="dialogo-titulo">Nueva tarea</h2>
+      <p class="ayuda">Pegá el mensaje tal como te llegó. La IA lo toma apenas la creás.</p>
+
+      <label class="campo">Título
+        <input name="titulo" required maxlength="140" placeholder="Ej.: Cliente no recibe el SMS de invitación">
+      </label>
+      <label class="campo">Mensaje
+        <textarea name="mensaje" required rows="6" placeholder="El pedido, consulta o mensaje original"></textarea>
+      </label>
+
+      <div class="fila">
+        <label class="campo">Proyecto
+          <select name="proyecto" id="campo-proyecto"></select>
+        </label>
+        <label class="campo">Prioridad
+          <select name="prioridad">
+            <option value="">Sin prioridad</option>
+            <option value="alta">Alta</option>
+            <option value="media">Media</option>
+            <option value="baja">Baja</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="fila">
+        <label class="campo">Llegó por
+          <select name="origen">
+            <option value="">—</option>
+            <option>Teams</option>
+            <option>Slack</option>
+            <option>Mail</option>
+            <option>WhatsApp</option>
+            <option>Jira</option>
+            <option>Llamada</option>
+            <option>Otro</option>
+          </select>
+        </label>
+        <label class="campo">Quién lo pidió
+          <input name="de" maxlength="80" placeholder="Ej.: María (soporte N2)">
+        </label>
+      </div>
+
+      <label class="campo">Link al mensaje o ticket
+        <input name="link" type="url" placeholder="https://teams.microsoft.com/l/message/…">
+      </label>
+      <label class="campo">Etiquetas
+        <input name="etiquetas" placeholder="Separadas por coma: cámaras, sms">
+      </label>
+      <label class="campo">Nota para la IA (opcional)
+        <textarea name="nota" rows="2" placeholder="Lo que sepas y no esté en el mensaje"></textarea>
+      </label>
+
+      <div class="campo">
+        <span>Imágenes</span>
+        <div class="soltar" id="soltar" tabindex="0" role="button" aria-describedby="soltar-ayuda">
+          <span id="soltar-ayuda">Arrastrá capturas acá, pegalas con Ctrl+V o <u>elegí archivos</u></span>
+          <input type="file" id="archivos" accept="image/*" multiple hidden>
+        </div>
+        <ul class="miniaturas" id="miniaturas"></ul>
+      </div>
+
+      <p class="error" id="form-error" role="alert"></p>
+      <div class="botones">
+        <button class="boton" type="button" id="cancelar">Cancelar</button>
+        <button class="boton primario" type="submit" id="crear">Crear tarea</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

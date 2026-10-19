@@ -370,9 +370,21 @@ Objetivo: usarlo de verdad unos días con Kiro y SmartHome, cargando las tareas 
    registra errores en `%LOCALAPPDATA%\asistente-tareas\icono.log`. Todos los procesos hijos con
    `windowsHide`. Probado con doble clic real: no aparece ninguna ventana ni al iniciar ni mientras
    Kiro procesa. Este programa es la base del capturador (Fase 5).
-7. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
+7. [x] **Instalador con ventanas y zip para compartir**: `windows/Instalador.cs` (requisitos, carpeta,
+   proyectos, opciones; instala con `instalar --config`), `asistente empaquetar` genera
+   `dist/asistente-tareas-windows-<versión>.zip` (instalador + archivos + LEEME.txt). Los .exe y el
+   zip no van al repo; falta publicarlo como release de GitHub.
+8. [x] **Tablero propio en español** (`tablero/` + `src/tablero.mjs`) en lugar del de Backlog.md
+   (que sigue disponible con `--tablero-backlog`): columnas agrupadas por quién actúa (*Te toca*,
+   *La tiene la IA*, *Cerradas*), filtro por proyecto y búsqueda, detalle con mensaje, imágenes,
+   link, seguimiento (análisis y respuestas) y *Copiar borrador*, acciones según el estado
+   (*Enviar a la IA*, *Marcar resuelta*, *Pedir otra vuelta*, *Reabrir*, *Mover a*, *Archivar*),
+   formulario de *Nueva tarea* (proyecto, prioridad, origen, quién lo pidió, link, etiquetas, nota
+   para la IA e imágenes), actualización en vivo y modo claro/oscuro. Lee los archivos de las tareas y
+   escribe siempre con la CLI de Backlog.md.
+9. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
    `conocimiento/SmartHome/` lo que no está en el repo.
-8. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
+10. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
    en `conocimiento/<proyecto>/casos/`.
 
 **Criterio de salida:**

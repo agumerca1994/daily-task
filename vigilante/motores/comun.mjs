@@ -8,6 +8,9 @@ export function promptProcesar() {
     `Pertenece al proyecto ${proyecto}: estás en su carpeta, usá su contexto. ` +
     `La bandeja está en ${bandeja} (adjuntos en ${bandeja}/adjuntos/${id.toLowerCase()}/, ` +
     `conocimiento en ${bandeja}/conocimiento/${proyecto}/). Evento: ${evento}. ` +
+    (process.env.PROJECT_CONECTORES
+      ? `Conectores habilitados para este proyecto: ${process.env.PROJECT_CONECTORES}. `
+      : "Este proyecto no tiene conectores habilitados (Jira, Confluence...): si los necesitás, decilo en Falta. ") +
     `Al terminar respondé solo con una línea: "<id> -> <status final>".`
   );
 }
