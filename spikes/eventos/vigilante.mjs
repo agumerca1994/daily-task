@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 const bandeja = resolve(process.argv[2] ?? ".");
+// Configuración: eventos.json (local, no se versiona; copiar de eventos.example.json)
 const config = JSON.parse(readFileSync(resolve(process.argv[3] ?? `${aqui}/eventos.json`), "utf8"));
 const logFile = resolve(aqui, config.log ?? "vigilante.log");
 
@@ -75,13 +76,30 @@ function coincide(h, ev) {
 
 const enCurso = new Set(); // evita lanzar dos handlers a la vez sobre la misma tarea
 
+// "run": "ia" -> el motor y la carpeta salen del proyecto de la tarea (config.proyectos)
+function resolverComando(h, ev) {
+  if (h.run !== "ia") return { comando: h.run, proyecto: null };
+  const nombre = ev.task.project ?? config.proyectoPorDefecto;
+  const proyecto = nombre && config.proyectos?.[nombre];
+  if (!proyecto) {
+    log(`  ! ${ev.task.id} sin proyecto configurado (${nombre ?? "vacío"}): no se procesa`);
+    return null;
+  }
+  const comando = config.motores?.[proyecto.motor];
+  if (!comando) { log(`  ! motor "${proyecto.motor}" no definido en motores`); return null; }
+  return { comando, proyecto: { nombre, ...proyecto, carpeta: resolve(proyecto.carpeta) } };
+}
+
 function ejecutar(h, ev) {
   const id = ev.task.id;
+  const r = resolverComando(h, ev);
+  if (!r) return;
   const clave = `${h.name ?? h.run}|${id}`;
   if (enCurso.has(clave)) return log(`  - ${h.name}: ${id} ya en curso, se omite`);
   enCurso.add(clave);
-  log(`  > ${h.name ?? h.run} (${ev.type} ${id})`);
-  const p = spawn(h.run, {
+  const donde = r.proyecto ? ` -> ${r.proyecto.motor} en ${r.proyecto.nombre}` : "";
+  log(`  > ${h.name ?? h.run} (${ev.type} ${id})${donde}`);
+  const p = spawn(r.comando, {
     cwd: bandeja,
     shell: true,
     env: {
@@ -92,6 +110,10 @@ function ejecutar(h, ev) {
       TASK_STATUS: ev.task.status ?? "",
       FROM_STATUS: ev.from ?? "",
       TO_STATUS: ev.to ?? "",
+      BANDEJA: bandeja,
+      PROJECT_NAME: r.proyecto?.nombre ?? "",
+      PROJECT_DIR: r.proyecto?.carpeta ?? "",
+      PROJECT_MODEL: r.proyecto?.modelo ?? "",
     },
   });
   p.stdin.end(JSON.stringify(ev)); // el evento completo también llega por stdin

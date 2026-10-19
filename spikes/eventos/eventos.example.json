@@ -1,0 +1,37 @@
+{
+  "log": "vigilante.log",
+  "procesarPendientesAlIniciar": "Pendiente",
+  "proyectoPorDefecto": null,
+  "proyectos": {
+    "SmartHome": {
+      "carpeta": "C:/Users/<yo>/repos/smarthome",
+      "motor": "kiro"
+    },
+    "Personal": {
+      "carpeta": "/home/<yo>/proyectos/otro-proyecto",
+      "motor": "claude"
+    }
+  },
+  "motores": {
+    "kiro": "node ../eventos/ia-kiro.mjs",
+    "claude": "node ../eventos/ia-claude.mjs"
+  },
+  "handlers": [
+    {
+      "name": "ia-nueva",
+      "on": "task.created",
+      "when": {
+        "status": "Pendiente"
+      },
+      "run": "ia"
+    },
+    {
+      "name": "ia-respuesta",
+      "on": "task.moved",
+      "when": {
+        "to": "Pendiente"
+      },
+      "run": "ia"
+    }
+  ]
+}

@@ -12,3 +12,12 @@ obj/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Bandejas: las tareas pueden tener datos de clientes o información interna de los proyectos.
+# En spikes/ solo se versionan las tareas inventadas que ya estaban; las nuevas quedan locales.
+spikes/bandeja/backlog/tasks/*
+spikes/bandeja/backlog/archive/
+spikes/bandeja/adjuntos/*
+
+# Configuración local (rutas de cada PC). Se versiona solo el .example.
+spikes/eventos/eventos.json

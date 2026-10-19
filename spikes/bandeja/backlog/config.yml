@@ -2,6 +2,7 @@ project_name: "Bandeja prueba"
 default_status: "Pendiente"
 statuses: ["Pendiente", "En análisis", "Esperando info", "Para revisar", "Resuelta"]
 labels: [camaras, soporte, consulta]
+projects: [SmartHome, Personal]
 date_format: yyyy-mm-dd
 max_column_width: 20
 auto_open_browser: false
