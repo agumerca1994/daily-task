@@ -229,7 +229,9 @@ function dibujarAcciones(t) {
   } else if (t.estado === "Pendiente") {
     principal = `<p class="nota-estado">En cola: la IA la toma en unos segundos. Esta vista se actualiza sola.</p>`;
   } else {
-    principal = `<p class="nota-estado">La IA la está analizando. Esta vista se actualiza sola.</p>`;
+    principal = `<p class="nota-estado">En análisis: la IA (o alguien desde Kiro) la está trabajando y el asistente automático no la toma.
+      Si quedó trabada o la moviste acá por error, volvé a analizarla.</p>
+      <div class="acciones-fila"><button class="boton" type="button" data-accion="reanalizar">Volver a analizar</button></div>`;
   }
   acciones.innerHTML = `${principal}
     <div class="acciones-fila"><span class="derecha">
@@ -255,12 +257,19 @@ function dibujarAcciones(t) {
         return dibujarAccionesDespues(t);
       case "resolver": return hacer(b, () => mover(id, "Resuelta"), "Marcada como resuelta.");
       case "reabrir": return hacer(b, () => mover(id, "Para revisar"), "Reabierta.");
+      case "reanalizar": return hacer(b, () => mover(id, "Pendiente"), "Vuelve a la cola: la IA la toma en unos segundos.");
       case "archivar":
         if (b.dataset.seguro !== "1") { b.dataset.seguro = "1"; b.textContent = "¿Archivar? Confirmar"; return; }
         return hacer(b, async () => { await api(`/api/tareas/${id}/archivar`, { method: "POST", body: "{}" }); cerrarPanel(); }, "Archivada.");
     }
   }));
-  $("#mover").addEventListener("change", (e) => mover(t.id, e.target.value).then(() => avisar(`Movida a ${e.target.value}.`), (err) => avisar(err.message)));
+  $("#mover").addEventListener("change", (e) => {
+    const destino = e.target.value;
+    const mensaje = destino === "En análisis"
+      ? "Queda reservada: la IA no la toma. Para que la analice, pasala a Pendiente."
+      : destino === "Pendiente" ? "Vuelve a la cola: la IA la toma en unos segundos." : `Movida a ${destino}.`;
+    mover(t.id, destino).then(() => avisar(mensaje), (err) => avisar(err.message));
+  });
 }
 
 // Al reemplazar los botones por el campo de respuesta, se vuelven a conectar
