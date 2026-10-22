@@ -1,7 +1,7 @@
 // `asistente proyecto ...`: qué proyectos atiende la bandeja, en qué carpeta, con qué motor y con qué
 // conectores (Jira, Confluence...) del propio proyecto.
 import { existsSync } from "node:fs";
-import { agregarProyecto, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
+import { agregarProyecto, definirArchivos, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
 import { conectoresDelProyecto, instalarAgente, instalarSteering, permitidas, RUTA_AGENTE, RUTA_STEERING } from "./kiro.mjs";
 import { barras, leerConfigUsuario } from "./rutas.mjs";
 
@@ -28,7 +28,8 @@ export function listarProyectos(bandeja) {
     const p = cfg.proyectos[n];
     const marca = cfg.proyectoPorDefecto === n ? " (por defecto)" : "";
     const con = Object.entries(p.conectores ?? {}).map(([s, x]) => `${s}: ${textoPermiso(x)}`).join(", ");
-    console.log(`- ${n}${marca}: ${p.motor}${p.modelo ? ` / ${p.modelo}` : ""} en ${p.carpeta}${con ? ` — conectores: ${con}` : ""}`);
+    const arch = p.archivos === "escritura" ? "lectura y escritura" : "solo lectura";
+    console.log(`- ${n}${marca}: ${p.motor}${p.modelo ? ` / ${p.modelo}` : ""} en ${p.carpeta} — archivos: ${arch}${con ? ` — conectores: ${con}` : ""}`);
   }
 }
 
@@ -72,6 +73,14 @@ export function comandoProyecto(bandeja, [accion, nombre, carpeta, ...resto], op
       return console.log(cfg.proyectoPorDefecto
         ? `Las tareas sin proyecto van a ${nombre}.` : "Las tareas sin proyecto no se procesan.");
     }
+    case "archivos": {
+      // asistente proyecto archivos <nombre> lectura|escritura
+      const p = definirArchivos(bandeja, nombre, carpeta);
+      actualizarKiro(bandeja);
+      return console.log(p.archivos === "escritura"
+        ? `${nombre}: la IA puede modificar archivos dentro de ${p.carpeta} (siempre te propone los cambios y espera tu aprobación).`
+        : `${nombre}: la IA solo lee los archivos del proyecto.`);
+    }
     case "conectores": {
       // asistente proyecto conectores <nombre> [servidor=permiso ...] | ninguno
       const pares = [carpeta, ...resto].filter(Boolean);
@@ -95,6 +104,6 @@ export function comandoProyecto(bandeja, [accion, nombre, carpeta, ...resto], op
       return mostrarConectores(bandeja, nombre);
     }
     default:
-      throw new Error(`Acción desconocida: ${accion} (listar, agregar, quitar, por-defecto, conectores; motores: ${MOTORES.join(", ")})`);
+      throw new Error(`Acción desconocida: ${accion} (listar, agregar, quitar, por-defecto, archivos, conectores; motores: ${MOTORES.join(", ")})`);
   }
 }

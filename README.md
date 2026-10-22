@@ -118,6 +118,18 @@ En el tablero, **Configuración** (arriba a la derecha): por proyecto, la carpet
 la IA; qué pasa con las tareas sin proyecto y las notificaciones. Los cambios aplican desde la próxima
 tarea, sin reiniciar.
 
+## Permiso sobre los archivos del proyecto
+
+Por defecto la IA **solo lee** la carpeta del proyecto. En **Configuración** (o con
+`node bin/asistente.mjs proyecto archivos <nombre> lectura|escritura`) se le puede dar **lectura y
+escritura**:
+
+- Solo dentro de la carpeta del proyecto: Kiro bloquea cualquier escritura fuera de ella.
+- En dos pasos: cuando una tarea pide un cambio, la IA primero escribe en la tarea los *Cambios
+  propuestos* (qué archivos y qué cambia) y la deja en *Para revisar*; los aplica solo cuando
+  respondés aprobándolos, y al final lista los *Archivos modificados* (si es un repo, revisalos con
+  `git diff`).
+
 ## Sesión de Kiro
 
 Arriba a la derecha del tablero se ve si Kiro tiene sesión (**● Kiro conectado** / **● Kiro sin sesión**).

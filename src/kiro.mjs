@@ -62,7 +62,10 @@ const LECTURA = [
 ];
 
 export const slug = (nombre) => nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-export const nombreAgente = (proyecto, cfg) => (cfg?.conectores && Object.keys(cfg.conectores).length ? `${AGENTE}-${slug(proyecto)}` : AGENTE);
+/** Un proyecto con conectores o con escritura en sus archivos usa un agente propio. */
+export const necesitaAgentePropio = (cfg) =>
+  !!((cfg?.conectores && Object.keys(cfg.conectores).length) || cfg?.archivos === "escritura");
+export const nombreAgente = (proyecto, cfg) => (necesitaAgentePropio(cfg) ? `${AGENTE}-${slug(proyecto)}` : AGENTE);
 
 /** Conectores (servidores MCP) definidos en la configuración de Kiro del proyecto. */
 export function conectoresDelProyecto(carpeta) {
@@ -88,12 +91,23 @@ export function instalarAgente(bandeja, proyectos = {}) {
   const vigentes = new Set([`${AGENTE}.json`]);
   const avisos = [];
   for (const [nombre, p] of Object.entries(proyectos)) {
+    if (!necesitaAgentePropio(p)) continue;
     const conectores = Object.entries(p.conectores ?? {});
-    if (!conectores.length) continue;
     const agente = agenteBase(bandeja);
     agente.name = nombreAgente(nombre, p);
-    agente.description = `Asistente de tareas del proyecto ${nombre} (con ${conectores.map(([s, x]) => `${s}: ${Array.isArray(x) ? x.join("+") : x}`).join(", ")})`;
-    agente.includeMcpJson = true;
+    const partes = [
+      p.archivos === "escritura" ? "archivos: lectura y escritura" : "archivos: solo lectura",
+      ...conectores.map(([s, x]) => `${s}: ${Array.isArray(x) ? x.join("+") : x}`),
+    ];
+    agente.description = `Asistente de tareas del proyecto ${nombre} (${partes.join(", ")})`;
+    if (p.archivos === "escritura") {
+      // Escritura SOLO dentro de la carpeta del proyecto: `write` no va en allowedTools (eso la
+      // habilitaría en cualquier ruta); allowedPaths la aprueba ahí y Kiro bloquea el resto (probado).
+      agente.tools.push("write");
+      agente.toolsSettings = { ...(agente.toolsSettings ?? {}), write: { allowedPaths: [`${p.carpeta.replace(/\\/g, "/")}/**`] } };
+      agente.prompt = agente.prompt.replace("solo leés sus archivos", "podés modificar sus archivos solo como indica asistente.md");
+    }
+    if (conectores.length) agente.includeMcpJson = true;
     for (const [servidor, permiso] of conectores) {
       const lista = permitidas(servidor, permiso);
       if (!lista) { avisos.push(`${nombre}/${servidor}: no sé qué herramientas son de lectura; indicalas a mano`); continue; }

@@ -393,9 +393,14 @@ Objetivo: usarlo de verdad unos días con Kiro y SmartHome, cargando las tareas 
    última sesión: el login de Kiro no funciona sin terminal, probado). Sin sesión, las tareas esperan
    en Pendiente (un aviso por hora) y se procesan solas al reconectar; si una tarea se corta en *En
    análisis*, vuelve a Pendiente.
-11. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
+11. [x] **Permiso sobre los archivos del proyecto**: solo lectura (por defecto) o lectura y escritura,
+   por proyecto (Configuración o `proyecto archivos`). Con escritura, el agente del proyecto tiene la
+   herramienta `write` limitada a la carpeta del proyecto con `toolsSettings.write.allowedPaths` y SIN
+   ponerla en `allowedTools` (si se pone, Kiro deja escribir en cualquier ruta: probado); fuera de la
+   carpeta Kiro la bloquea. Cambios en dos pasos (propuestos, aprobación, archivos modificados).
+12. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
    `conocimiento/SmartHome/` lo que no está en el repo.
-12. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
+13. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
    en `conocimiento/<proyecto>/casos/`.
 
 **Criterio de salida:**

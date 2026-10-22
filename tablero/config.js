@@ -76,10 +76,17 @@ function tarjetaProyecto(p) {
         ${modelo !== null ? `<select name="modelo">${modelo}</select>` : `<input name="modelo" value="${esc(p.modelo)}" placeholder="El predeterminado de Claude">`}
       </label>
     </div>
+    <div class="campo"><span>Archivos del proyecto</span>
+      <span class="segmento" role="radiogroup" aria-label="Permiso sobre los archivos de ${esc(p.nombre)}">
+        ${[["lectura", "Solo lectura"], ["escritura", "Lectura y escritura"]].map(([v, txt]) => `<label><input type="radio" name="arch-${esc(p.nombre)}" value="${v}" data-archivos
+          ${(p.archivos === "escritura" ? "escritura" : "lectura") === v ? "checked" : ""}><span>${txt}</span></label>`).join("")}
+      </span>
+    </div>
+    <p class="aviso-escritura" data-aviso="archivos" ${p.archivos === "escritura" ? "" : "hidden"}>Solo dentro de esta carpeta, y te propone los cambios antes de aplicarlos.</p>
     <div class="campo"><span>Conectores que puede usar la IA</span>
       <div class="conectores">${conectores}</div>
     </div>
-    <p class="aviso-escritura" ${Object.values(p.conectores).includes("escritura") ? "" : "hidden"}>
+    <p class="aviso-escritura" data-aviso="conectores" ${Object.values(p.conectores).includes("escritura") ? "" : "hidden"}>
       Con escritura la IA puede crear y modificar, pero antes te propone la acción en la tarea y espera tu aprobación.</p>
     <div class="acciones-fila">
       <button class="boton primario" type="button" data-guardar disabled>Guardar cambios</button>
@@ -142,6 +149,7 @@ function leerTarjeta(art) {
     nombre: art.dataset.nombre,
     carpeta: art.querySelector('[name="carpeta"]').value,
     motor: art.querySelector('[name="motor"]').value,
+    archivos: art.querySelector("input[data-archivos]:checked")?.value ?? "lectura",
     modelo: art.querySelector('[name="modelo"]').value,
     conectores,
   };
@@ -152,8 +160,9 @@ function conectarConfig() {
     const guardar = art.querySelector("[data-guardar]");
     const marcar = () => {
       guardar.disabled = false;
-      const conEscritura = !!art.querySelector('input[value="escritura"]:checked');
-      art.querySelector(".aviso-escritura").hidden = !conEscritura;
+      const conEscritura = !!art.querySelector('input[data-conector][value="escritura"]:checked');
+      art.querySelector('[data-aviso="conectores"]').hidden = !conEscritura;
+      art.querySelector('[data-aviso="archivos"]').hidden = art.querySelector("input[data-archivos]:checked")?.value !== "escritura";
     };
     art.querySelectorAll("input, select").forEach((el) => el.addEventListener("change", marcar));
     art.querySelector('[name="carpeta"]').addEventListener("input", marcar);

@@ -40,6 +40,8 @@ const args = [
   "--no-session-persistence",
 ];
 if (process.env.PROJECT_MODEL) args.push("--model", process.env.PROJECT_MODEL);
+// Con escritura en los archivos del proyecto: Claude Code solo edita dentro de la carpeta de trabajo
+if (process.env.PROJECT_ARCHIVOS === "escritura") args.splice(args.indexOf("--allowedTools") + 1, 0, "Edit", "Write");
 
 const r = spawnSync(claude, args, { cwd: process.env.PROJECT_DIR, encoding: "utf8", timeout: 10 * 60 * 1000, windowsHide: true });
 if (r.error) terminar(1, r.error.message);

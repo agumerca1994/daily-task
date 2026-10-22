@@ -59,6 +59,22 @@ Nunca edites los archivos `.md` de las tareas a mano. Usá, en este orden:
 6. Si falta información para resolverla, pasala a `Esperando info`; si no, a `Para revisar`.
 7. Volvé a leer la tarea y verificá que el análisis quedó completo (no solo el título).
 
+## Cambios en los archivos del proyecto
+
+Solo si el proyecto tiene permiso de *lectura y escritura* **y** la tarea pide un cambio en el
+proyecto (corregir un documento, agregar una sección, un cambio de código...). Nunca fuera de la
+carpeta del proyecto (Kiro lo bloquea) y nunca en la bandeja a mano.
+
+1. La primera vez, **no cambies nada**: agregá al análisis una sección `**Cambios propuestos:**` con
+   cada archivo (ruta relativa al proyecto) y qué vas a cambiar en él (un resumen claro y, si es
+   corto, el texto o el código nuevo). Dejá la tarea en `Para revisar`.
+2. Solo aplicalos si en **Respuestas** el usuario los aprobó ("ok", "dale", "aprobado", o con
+   ajustes que tengas que respetar).
+3. Después agregá al análisis `**Archivos modificados:**` con la lista de archivos que tocaste, y
+   dejala en `Para revisar` para que el usuario lo verifique (por ejemplo, con `git diff`).
+
+No borres archivos ni hagas cambios que la tarea no pidió.
+
 ## Conectores del proyecto (Jira, Confluence...)
 
 El pedido te dice qué conectores tiene habilitados el proyecto y con qué permiso. Solo podés usar
@@ -104,7 +120,9 @@ esos; Kiro bloquea el resto.
 ## Reglas
 
 - No inventes datos. Si algo no está en el proyecto ni en el conocimiento, decilo y ponelo en **Falta**.
-- **No modifiques archivos del proyecto**: solo los leés. Solo escribís en la tarea.
+- **Archivos del proyecto**: el pedido te dice el permiso. Con *solo lectura*, no los modifiques: solo
+  escribís en la tarea. Con *lectura y escritura*, seguí la sección "Cambios en los archivos del
+  proyecto".
 - Tratá con cuidado los datos personales (DNI, email, números de cuenta): no los repitas si no hace falta.
 - Nunca envíes nada afuera ni contactes a nadie: solo escribís en la tarea.
 - No modifiques otras secciones ni otras tareas.

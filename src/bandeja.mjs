@@ -79,19 +79,36 @@ export function validarNombre(nombre) {
   }
 }
 
-export function agregarProyecto(bandeja, { nombre, carpeta, motor = "kiro", modelo, conectores }) {
+export const PERMISOS_ARCHIVOS = ["lectura", "escritura"];
+
+export function agregarProyecto(bandeja, { nombre, carpeta, motor = "kiro", modelo, conectores, archivos }) {
   validarNombre(nombre);
   if (!carpeta || !existsSync(carpeta)) throw new Error(`No existe la carpeta del proyecto: ${carpeta}`);
   if (!MOTORES.includes(motor)) throw new Error(`Motor inválido: ${motor} (opciones: ${MOTORES.join(", ")})`);
+  if (archivos && !PERMISOS_ARCHIVOS.includes(archivos)) throw new Error(`Permiso de archivos inválido: ${archivos} (lectura o escritura)`);
   const cfg = leerConfig(bandeja);
   const antes = cfg.proyectos[nombre] ?? {};
-  // Si no se indican conectores, se conservan los que tenía (reinstalar no los borra)
+  // Si no se indican conectores o permiso de archivos, se conservan los que tenía (reinstalar no los borra)
   const con = conectores ?? antes.conectores;
+  const arch = archivos ?? antes.archivos;
   cfg.proyectos[nombre] = {
-    carpeta: barras(carpeta), motor, ...(modelo ? { modelo } : {}), ...(con && Object.keys(con).length ? { conectores: con } : {}),
+    carpeta: barras(carpeta), motor, ...(modelo ? { modelo } : {}),
+    ...(arch === "escritura" ? { archivos: "escritura" } : {}),
+    ...(con && Object.keys(con).length ? { conectores: con } : {}),
   };
   guardarConfig(bandeja, cfg);
   return cfg.proyectos[nombre];
+}
+
+/** Permiso de la IA sobre los archivos del proyecto: "lectura" (por defecto) o "escritura". */
+export function definirArchivos(bandeja, nombre, permiso) {
+  if (!PERMISOS_ARCHIVOS.includes(permiso)) throw new Error(`Permiso inválido: ${permiso} (lectura o escritura)`);
+  const cfg = leerConfig(bandeja);
+  const p = cfg.proyectos[nombre];
+  if (!p) throw new Error(`No existe el proyecto ${nombre}`);
+  if (permiso === "escritura") p.archivos = "escritura"; else delete p.archivos;
+  guardarConfig(bandeja, cfg);
+  return p;
 }
 
 /** Define los conectores de un proyecto: { servidor: "lectura" | "escritura" | ["herramienta", ...] }. */

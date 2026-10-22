@@ -98,6 +98,7 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
           PROJECT_DIR: proyecto.carpeta,
           PROJECT_MODEL: proyecto.modelo ?? "",
           PROJECT_AGENT: nombreAgente(nombre, proyecto),
+          PROJECT_ARCHIVOS: proyecto.archivos === "escritura" ? "escritura" : "lectura",
           PROJECT_CONECTORES: Object.entries(proyecto.conectores ?? {}).map(([s, x]) => `${s} (${Array.isArray(x) ? x.join("+") : x})`).join(", "),
           ASISTENTE_MD: ASISTENTE_MD,
           INSTRUCCIONES_MD: rutaInstrucciones(bandeja),

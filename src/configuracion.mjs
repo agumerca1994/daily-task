@@ -2,7 +2,7 @@
 // comandos `asistente proyecto ...`, así ambos caminos quedan siempre iguales.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { agregarProyecto, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto, rutaInstrucciones } from "./bandeja.mjs";
+import { agregarProyecto, definirArchivos, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto, rutaInstrucciones } from "./bandeja.mjs";
 import { buscarKiro, conectoresDelProyecto, permitidas } from "./kiro.mjs";
 import { actualizarKiro } from "./proyectos.mjs";
 
@@ -19,6 +19,7 @@ export function leerConfiguracion(bandeja) {
       existe: existsSync(p.carpeta),
       motor: p.motor,
       modelo: p.modelo ?? "",
+      archivos: p.archivos === "escritura" ? "escritura" : "lectura",
       conectores: p.conectores ?? {},
       // Conectores del proyecto y si "lectura" se puede resolver solo
       disponibles: conectoresDelProyecto(p.carpeta).map((s) => ({ nombre: s, lecturaConocida: !!permitidas(s, "lectura") })),
@@ -26,11 +27,12 @@ export function leerConfiguracion(bandeja) {
   };
 }
 
-export function guardarProyecto(bandeja, { nombre, carpeta, motor, modelo, conectores, nuevo }) {
+export function guardarProyecto(bandeja, { nombre, carpeta, motor, modelo, conectores, archivos, nuevo }) {
   const cfg = leerConfig(bandeja);
   if (nuevo && cfg.proyectos[nombre]) throw new Error(`Ya existe un proyecto llamado ${nombre}.`);
   if (!nuevo && !cfg.proyectos[nombre]) throw new Error(`No existe el proyecto ${nombre}.`);
   agregarProyecto(bandeja, { nombre: (nombre ?? "").trim(), carpeta: (carpeta ?? "").trim().replace(/^"|"$/g, ""), motor, modelo: (modelo ?? "").trim() || undefined });
+  if (archivos) definirArchivos(bandeja, nombre, archivos);
   if (conectores) {
     const disponibles = conectoresDelProyecto(leerConfig(bandeja).proyectos[nombre].carpeta);
     for (const [s, permiso] of Object.entries(conectores)) {
