@@ -1,49 +1,48 @@
 // Motor Claude Code: procesa la tarea con `claude -p`, parado en la carpeta del proyecto (carga su
-// CLAUDE.md y su contexto), con asistente.md + instrucciones.md como system prompt adicional y el MCP
-// `backlog` de la bandeja. Pendiente de probar con un proyecto real (spike S8).
+// CLAUDE.md y su contexto), con asistente.md + instrucciones.md como system prompt adicional, el MCP
+// `backlog` de la bandeja y, si el proyecto los habilita, sus conectores (<proyecto>/.mcp.json, que se
+// pasa como archivo: las credenciales no se copian). En modo -p, Claude rechaza cualquier herramienta
+// que no esté en --allowedTools.
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { comandoBacklog } from "../../src/backlog.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import { buscarClaude, mcpBandeja, rutaMcpProyecto } from "../../src/claude.mjs";
+import { permitidas } from "../../src/kiro.mjs";
 import { promptProcesar, terminar } from "./comun.mjs";
-
-// claude: variable CLAUDE_BIN, el del PATH, o el de la extensión de VS Code más nueva
-function buscarClaude() {
-  if (process.env.CLAUDE_BIN) return process.env.CLAUDE_BIN;
-  if (spawnSync("claude", ["--version"]).status === 0) return "claude";
-  const ext = join(process.env.USERPROFILE ?? process.env.HOME ?? "", ".vscode", "extensions");
-  const dirs = existsSync(ext) ? readdirSync(ext).filter((d) => d.startsWith("anthropic.claude-code-")).sort().reverse() : [];
-  for (const d of dirs) {
-    for (const exe of ["claude.exe", "claude"]) {
-      const p = join(ext, d, "resources", "native-binary", exe);
-      if (existsSync(p)) return p;
-    }
-  }
-  return null;
-}
 
 const claude = buscarClaude();
 if (!claude) terminar(1, "No encuentro Claude Code (claude). Instalalo o definí CLAUDE_BIN.");
 
-const { BANDEJA: bandeja, ASISTENTE_MD, INSTRUCCIONES_MD } = process.env;
+const { BANDEJA: bandeja, ASISTENTE_MD, INSTRUCCIONES_MD, PROJECT_DIR: carpeta } = process.env;
 const leer = (p) => { try { return readFileSync(p, "utf8"); } catch { return ""; } };
 const sistema = [leer(ASISTENTE_MD), leer(INSTRUCCIONES_MD)].filter(Boolean).join("\n\n---\n\n");
-const { command, args: argsBacklog } = comandoBacklog();
-const mcp = { mcpServers: { backlog: { command, args: [...argsBacklog, "mcp", "start", "--cwd", bandeja] } } };
+
+const herramientas = ["mcp__backlog", "Read", "Glob", "Grep"];
+// Archivos del proyecto: con escritura, Claude solo edita dentro de la carpeta de trabajo y las
+// carpetas agregadas (la bandeja, que igual se modifica solo por MCP según asistente.md)
+if (process.env.PROJECT_ARCHIVOS === "escritura") herramientas.push("Edit", "Write");
+
+const mcp = [JSON.stringify(mcpBandeja(bandeja))];
+let conectores = {};
+try { conectores = JSON.parse(process.env.PROJECT_CONECTORES_JSON || "{}"); } catch { /* sin conectores */ }
+if (Object.keys(conectores).length && existsSync(rutaMcpProyecto(carpeta))) {
+  mcp.push(rutaMcpProyecto(carpeta));
+  for (const [servidor, permiso] of Object.entries(conectores)) herramientas.push(...(permitidas(servidor, permiso, "claude") ?? []));
+}
 
 const args = [
   "-p", promptProcesar(),
   "--append-system-prompt", sistema,
-  "--mcp-config", JSON.stringify(mcp),
+  "--mcp-config", ...mcp,
   "--add-dir", bandeja,
-  "--allowedTools", "mcp__backlog", "Read", "Glob", "Grep", "Bash(backlog *)", "PowerShell(backlog *)",
+  "--allowedTools", ...herramientas,
   "--no-session-persistence",
 ];
 if (process.env.PROJECT_MODEL) args.push("--model", process.env.PROJECT_MODEL);
-// Con escritura en los archivos del proyecto: Claude Code solo edita dentro de la carpeta de trabajo
-if (process.env.PROJECT_ARCHIVOS === "escritura") args.splice(args.indexOf("--allowedTools") + 1, 0, "Edit", "Write");
 
-const r = spawnSync(claude, args, { cwd: process.env.PROJECT_DIR, encoding: "utf8", timeout: 10 * 60 * 1000, windowsHide: true });
+const r = spawnSync(claude, args, { cwd: carpeta, encoding: "utf8", timeout: 10 * 60 * 1000, windowsHide: true });
 if (r.error) terminar(1, r.error.message);
-if (r.status !== 0) terminar(r.status ?? 1, `${r.stderr ?? ""}`.trim());
+if (r.status !== 0) {
+  const err = `${r.stderr || r.stdout || ""}`.trim().split(/\r?\n/).slice(-5).join("\n");
+  terminar(r.status ?? 1, /not logged in|log in|login|authenticat/i.test(err) ? `Claude Code sin sesión: iniciá sesión\n${err}` : err);
+}
 terminar(0, `${r.stdout ?? ""}`.trim().split(/\r?\n/).filter(Boolean).at(-1) ?? "(sin respuesta)");

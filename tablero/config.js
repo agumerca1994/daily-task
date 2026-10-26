@@ -61,7 +61,7 @@ function tarjetaProyecto(p) {
             ${v === "lectura" && !c.lecturaConocida ? 'disabled title="No sé qué herramientas de este conector son de lectura: se configura por comando"' : ""}><span>${t}</span></label>`).join("")}
         </span></div>`;
     }).join("")
-    : `<p class="vacio-con">Este proyecto no tiene conectores configurados en Kiro (.kiro/settings/mcp.json).</p>`;
+    : `<p class="vacio-con">Este proyecto no tiene conectores configurados (${esc(p.archivoConectores)}).</p>`;
   return `<article class="conf-proyecto" data-nombre="${esc(p.nombre)}">
     <header><h3>${esc(p.nombre)}</h3>${d.porDefecto === p.nombre ? '<span class="chip">por defecto</span>' : ""}</header>
     <label class="campo">Carpeta del proyecto

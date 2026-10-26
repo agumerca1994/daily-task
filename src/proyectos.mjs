@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { agregarProyecto, definirArchivos, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
 import { conectoresDelProyecto, instalarAgente, instalarSteering, permitidas, RUTA_AGENTE, RUTA_STEERING } from "./kiro.mjs";
 import { barras, leerConfigUsuario } from "./rutas.mjs";
+import { hayInstruccionesClaude, instalarInstruccionesClaude } from "./claude.mjs";
 
 // Lo instalado en Kiro (steering y agentes) se actualiza cuando cambian los proyectos
 export function actualizarKiro(bandeja) {
@@ -12,6 +13,7 @@ export function actualizarKiro(bandeja) {
   if (!instalada || barras(instalada) !== barras(bandeja)) return [];
   const proyectos = leerConfig(bandeja).proyectos;
   if (existsSync(RUTA_STEERING)) instalarSteering(Object.keys(proyectos));
+  if (hayInstruccionesClaude()) instalarInstruccionesClaude(Object.keys(proyectos));
   if (!existsSync(RUTA_AGENTE)) return [];
   const { avisos } = instalarAgente(bandeja, proyectos);
   for (const a of avisos) console.log(`Aviso: ${a}`);
@@ -37,8 +39,8 @@ export function listarProyectos(bandeja) {
 function mostrarConectores(bandeja, nombre) {
   const p = leerConfig(bandeja).proyectos[nombre];
   if (!p) throw new Error(`No existe el proyecto ${nombre}`);
-  const disponibles = conectoresDelProyecto(p.carpeta);
-  console.log(`Conectores de ${nombre} (${p.carpeta}\\.kiro\\settings\\mcp.json):`);
+  const disponibles = conectoresDelProyecto(p.carpeta, p.motor);
+  console.log(`Conectores de ${nombre} (${p.carpeta}/${p.motor === "claude" ? ".mcp.json" : ".kiro/settings/mcp.json"}):`);
   if (!disponibles.length) console.log("  (el proyecto no tiene conectores configurados en Kiro)");
   for (const s of disponibles) {
     const permiso = p.conectores?.[s];
@@ -87,7 +89,7 @@ export function comandoProyecto(bandeja, [accion, nombre, carpeta, ...resto], op
       if (!pares.length) return mostrarConectores(bandeja, nombre);
       const cfg = leerConfig(bandeja).proyectos[nombre];
       if (!cfg) throw new Error(`No existe el proyecto ${nombre}`);
-      const disponibles = conectoresDelProyecto(cfg.carpeta);
+      const disponibles = conectoresDelProyecto(cfg.carpeta, cfg.motor);
       const conectores = {};
       if (pares[0] !== "ninguno") {
         for (const par of pares) {
@@ -95,7 +97,7 @@ export function comandoProyecto(bandeja, [accion, nombre, carpeta, ...resto], op
           if (!s || !v) throw new Error(`Formato: servidor=permiso (recibí "${par}")`);
           if (!disponibles.includes(s)) throw new Error(`${nombre} no tiene el conector "${s}". Disponibles: ${disponibles.join(", ") || "ninguno"}`);
           const permiso = ["lectura", "escritura"].includes(v) ? v : v.split("+");
-          if (!permitidas(s, permiso)) throw new Error(`No sé cuáles herramientas de "${s}" son de lectura: indicalas, por ejemplo ${s}=herramienta1+herramienta2`);
+          if (!permitidas(s, permiso, cfg.motor)) throw new Error(`No sé cuáles herramientas de "${s}" son de lectura: indicalas, por ejemplo ${s}=herramienta1+herramienta2`);
           conectores[s] = permiso;
         }
       }

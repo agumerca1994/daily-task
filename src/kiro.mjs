@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { comandoBacklog } from "./backlog.mjs";
+import { conectoresClaude, permitidasClaude } from "./claude.mjs";
 import { ASISTENTE_MD, REPO } from "./rutas.mjs";
 import { rutaInstrucciones } from "./bandeja.mjs";
 
@@ -67,8 +68,16 @@ export const necesitaAgentePropio = (cfg) =>
   !!((cfg?.conectores && Object.keys(cfg.conectores).length) || cfg?.archivos === "escritura");
 export const nombreAgente = (proyecto, cfg) => (necesitaAgentePropio(cfg) ? `${AGENTE}-${slug(proyecto)}` : AGENTE);
 
-/** Conectores (servidores MCP) definidos en la configuración de Kiro del proyecto. */
-export function conectoresDelProyecto(carpeta) {
+/** Herramientas de solo lectura conocidas de un conector, o null. */
+export const herramientasLectura = (servidor) => LECTURA.find((l) => l.patron.test(servidor))?.herramientas ?? null;
+
+/**
+ * Conectores (servidores MCP) del proyecto, según la IA que lo atiende:
+ *   kiro   -> <proyecto>/.kiro/settings/mcp.json
+ *   claude -> <proyecto>/.mcp.json
+ */
+export function conectoresDelProyecto(carpeta, motor = "kiro") {
+  if (motor === "claude") return conectoresClaude(carpeta);
   try {
     const cfg = JSON.parse(readFileSync(join(carpeta, ".kiro", "settings", "mcp.json"), "utf8"));
     return Object.entries(cfg.mcpServers ?? {}).filter(([, v]) => !v.disabled).map(([k]) => k);
@@ -76,11 +85,12 @@ export function conectoresDelProyecto(carpeta) {
 }
 
 /** Herramientas permitidas para un conector según el permiso; null si "lectura" no se sabe resolver. */
-export function permitidas(servidor, permiso) {
+export function permitidas(servidor, permiso, motor = "kiro") {
+  if (motor === "claude") return permitidasClaude(servidor, permiso, herramientasLectura(servidor));
   if (Array.isArray(permiso)) return permiso.map((h) => `@${servidor}/${h}`);
   if (permiso === "escritura") return [`@${servidor}`];
-  const conocido = LECTURA.find((l) => l.patron.test(servidor));
-  return conocido ? conocido.herramientas.map((h) => `@${servidor}/${h}`) : null;
+  const lectura = herramientasLectura(servidor);
+  return lectura ? lectura.map((h) => `@${servidor}/${h}`) : null;
 }
 
 /** Genera el agente base y uno por cada proyecto con conectores; borra los que ya no corresponden. */
@@ -91,7 +101,7 @@ export function instalarAgente(bandeja, proyectos = {}) {
   const vigentes = new Set([`${AGENTE}.json`]);
   const avisos = [];
   for (const [nombre, p] of Object.entries(proyectos)) {
-    if (!necesitaAgentePropio(p)) continue;
+    if (p.motor !== "kiro" || !necesitaAgentePropio(p)) continue; // los de Claude no usan agentes de Kiro
     const conectores = Object.entries(p.conectores ?? {});
     const agente = agenteBase(bandeja);
     agente.name = nombreAgente(nombre, p);

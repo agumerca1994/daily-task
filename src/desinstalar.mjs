@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { quitarAccesos } from "./accesos.mjs";
 import { autoinicio } from "./autoinicio.mjs";
+import { quitarInstruccionesClaude, quitarMcpClaude } from "./claude.mjs";
 import { quitarIcono } from "./icono.mjs";
 import { detener } from "./iniciar.mjs";
 import { RUTA_AGENTE, RUTA_MCP_USUARIO, RUTA_STEERING } from "./kiro.mjs";
@@ -15,6 +16,8 @@ export async function desinstalar() {
   const exe = quitarIcono();
   if (exe) console.log(`Quitado: ${exe}`);
   try { autoinicio("desactivar", bandeja); } catch { /* no soportado en este sistema */ }
+  quitarMcpClaude();
+  quitarInstruccionesClaude();
   for (const f of [RUTA_AGENTE, RUTA_STEERING, CONFIG_USUARIO]) {
     if (existsSync(f)) { rmSync(f); console.log(`Quitado: ${f}`); }
   }

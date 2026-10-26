@@ -234,16 +234,17 @@ main { padding: 20px 24px 48px; }
 .error { margin: 0; color: #b91c1c; font-size: 14px; min-height: 1em; }
 .botones { display: flex; justify-content: flex-end; gap: 8px; }
 
-/* ---------------------------------------------------------------- Sesión de Kiro */
-.kiro { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--tinta-2); }
-.kiro .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--pendiente); }
-.kiro[data-estado="conectado"] .punto { background: var(--resuelta); }
-.kiro[data-estado="sin-sesion"] { color: var(--espera); font-weight: 600; }
-.kiro[data-estado="sin-sesion"] .punto { background: var(--espera); box-shadow: 0 0 0 4px color-mix(in srgb, var(--espera) 22%, transparent); }
-.kiro[data-estado="esperando"] .punto { background: var(--analisis); animation: latido 1.2s ease-in-out infinite; }
+/* ---------------------------------------------------------------- Sesión de cada IA */
+.sesiones { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.sesion { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--tinta-2); }
+.sesion .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--pendiente); }
+.sesion[data-estado="conectado"] .punto { background: var(--resuelta); }
+.sesion[data-estado="sin-sesion"] { color: var(--espera); font-weight: 600; }
+.sesion[data-estado="sin-sesion"] .punto { background: var(--espera); box-shadow: 0 0 0 4px color-mix(in srgb, var(--espera) 22%, transparent); }
+.sesion[data-estado="esperando"] .punto { background: var(--analisis); animation: latido 1.2s ease-in-out infinite; }
 @keyframes latido { 50% { opacity: .35; } }
 .boton.chico { padding: 4px 10px; font-size: 13px; }
-.kiro[data-estado="sin-sesion"] .boton { border-color: var(--espera); color: var(--espera); }
+.sesion[data-estado="sin-sesion"] .boton { border-color: var(--espera); color: var(--espera); }
 
 /* ---------------------------------------------------------------- Configuración */
 .enlace-config { color: var(--tinta-2); font-size: 14px; font-weight: 600; text-decoration: none; padding: 6px 4px; }

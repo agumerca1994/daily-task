@@ -77,7 +77,7 @@ class Asistente : Form
     // Paso 3
     ListView lstProyectos;
     // Paso 4
-    CheckBox chkKiro, chkMenu, chkEscritorio, chkAuto, chkIniciar;
+    CheckBox chkKiro, chkClaude, chkMenu, chkEscritorio, chkAuto, chkIniciar;
     // Paso 5
     TextBox txtProgreso;
     ProgressBar barra;
@@ -233,11 +233,13 @@ class Asistente : Form
         Texto(p, "Últimos detalles:", 0, 22).Font = new Font(Normal, FontStyle.Bold);
         chkKiro = Opcion(p, "Conectar con Kiro (recomendado)", 30, true);
         Texto(p, "Agrega a tu usuario de Kiro (no a tus proyectos) el agente que procesa las tareas y el acceso a la bandeja desde el chat, para poder decirle \"creá una tarea en la bandeja: ...\".", 54, 40).Padding = new Padding(18, 0, 0, 0);
-        chkMenu = Opcion(p, "Crear \"Asistente de tareas\" en el menú Inicio", 104, true);
-        chkEscritorio = Opcion(p, "También en el escritorio", 132, false);
-        chkAuto = Opcion(p, "Iniciarlo solo cada vez que prendo la PC", 160, false);
-        chkIniciar = Opcion(p, "Iniciarlo al terminar la instalación", 188, true);
-        var nota = Texto(p, "El asistente funciona en segundo plano, sin ventanas: queda un ícono junto al reloj (si no lo ves, está en la flecha ^; arrastralo a la barra). Doble clic en el ícono abre el tablero.", 228, 44);
+        chkClaude = Opcion(p, "Conectar con Claude Code (para proyectos que atiende Claude)", 100, false);
+        chkClaude.Enabled = false;
+        chkMenu = Opcion(p, "Crear \"Asistente de tareas\" en el menú Inicio", 132, true);
+        chkEscritorio = Opcion(p, "También en el escritorio", 160, false);
+        chkAuto = Opcion(p, "Iniciarlo solo cada vez que prendo la PC", 188, false);
+        chkIniciar = Opcion(p, "Iniciarlo al terminar la instalación", 216, true);
+        var nota = Texto(p, "El asistente funciona en segundo plano, sin ventanas: queda un ícono junto al reloj (si no lo ves, está en la flecha ^; arrastralo a la barra). Doble clic en el ícono abre el tablero.", 252, 44);
         nota.ForeColor = Color.DimGray;
         return p;
     }
@@ -359,6 +361,7 @@ class Asistente : Form
         btnLoginKiro.Visible = kiro != null && !kiroSesion;
         chkKiro.Enabled = kiro != null;
         chkKiro.Checked = kiro != null;
+        chkClaude.Enabled = d.ContainsKey("claude") && d["claude"] != null;
 
         if (txtBandeja.Text.Length == 0) txtBandeja.Text = Ventana((d["bandeja"] as string) ?? (d["bandejaPorDefecto"] as string));
         if (lstProyectos.Items.Count == 0 && d["proyectos"] is System.Collections.ArrayList)
@@ -374,6 +377,7 @@ class Asistente : Form
     // ---------------------------------------------------------------- Proyectos
     void AgregarFila(Proyecto p)
     {
+        if (p.Motor == "claude" && chkClaude != null && chkClaude.Enabled) chkClaude.Checked = true;
         foreach (ListViewItem it in lstProyectos.Items)
             if (string.Equals(it.Text, p.Nombre, StringComparison.OrdinalIgnoreCase)) { lstProyectos.Items.Remove(it); break; }
         var item = new ListViewItem(new[] { p.Nombre, p.Carpeta, p.Motor }) { Tag = p };
@@ -449,6 +453,7 @@ class Asistente : Form
             { "proyectos", proyectos },
             { "instalarBacklog", chkInstalarBacklog.Checked },
             { "kiro", chkKiro.Enabled && chkKiro.Checked },
+            { "claude", chkClaude.Enabled && chkClaude.Checked },
             { "menu", chkMenu.Checked },
             { "escritorio", chkEscritorio.Checked },
             { "autoinicio", chkAuto.Checked },

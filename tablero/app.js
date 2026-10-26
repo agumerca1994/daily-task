@@ -379,51 +379,42 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// ---------------------------------------------------------------- Sesión de Kiro
-let kiroEsperando = 0; // mientras el usuario completa el login, se revisa más seguido
-async function revisarKiro(ahora = false) {
-  let s;
-  try { s = await api(`/api/kiro${ahora ? "?ahora" : ""}`); } catch { return; }
-  const caja = $("#kiro");
-  caja.hidden = !s.usaKiro;
-  if (!s.usaKiro) return;
-  const boton = $("#kiro-reconectar");
-  if (s.conectado) {
-    if (kiroEsperando) avisar("Kiro reconectado. Las tareas pendientes se procesan solas.");
-    kiroEsperando = 0;
-    caja.dataset.estado = "conectado";
-    $("#kiro-texto").textContent = "Kiro conectado";
-    caja.title = s.usuario ? `Sesión de ${s.usuario}` : "";
-    boton.hidden = true;
-  } else if (kiroEsperando) {
-    caja.dataset.estado = "esperando";
-    $("#kiro-texto").textContent = "Esperando el inicio de sesión…";
-    boton.hidden = false;
-    boton.textContent = "Abrir de nuevo";
-  } else {
-    caja.dataset.estado = "sin-sesion";
-    $("#kiro-texto").textContent = s.instalado ? "Kiro sin sesión" : "Kiro no está instalado";
-    caja.title = "Mientras Kiro no tenga sesión, las tareas esperan en Pendiente.";
-    boton.hidden = !s.instalado;
-    boton.textContent = "Reconectar";
-  }
+// ---------------------------------------------------------------- Sesión de cada IA
+const NOMBRE_IA = { kiro: "Kiro", claude: "Claude" };
+const esperandoLogin = {}; // motor -> momento en que se abrió el login (se revisa más seguido)
+
+async function revisarSesiones(ahora = false) {
+  let sesiones;
+  try { sesiones = await api(`/api/sesiones${ahora ? "?ahora" : ""}`); } catch { return; }
+  const caja = $("#sesiones");
+  caja.innerHTML = sesiones.map((s) => {
+    const ia = NOMBRE_IA[s.motor] ?? s.motor;
+    if (s.conectado && esperandoLogin[s.motor]) { avisar(`${ia} reconectado. Las tareas pendientes se procesan solas.`); delete esperandoLogin[s.motor]; }
+    const estado = s.conectado ? "conectado" : esperandoLogin[s.motor] ? "esperando" : "sin-sesion";
+    const texto = s.conectado ? `${ia} conectado` : esperandoLogin[s.motor] ? `${ia}: esperando el inicio de sesión…`
+      : s.instalado ? `${ia} sin sesión` : `${ia} no está instalado`;
+    const titulo = s.conectado ? (s.usuario ? `Sesión de ${s.usuario}` : "") : "Mientras no tenga sesión, sus tareas esperan en Pendiente.";
+    const boton = !s.conectado && s.instalado
+      ? `<button class="boton chico" type="button" data-login="${esc(s.motor)}">${esperandoLogin[s.motor] ? "Abrir de nuevo" : "Reconectar"}</button>` : "";
+    return `<div class="sesion" data-estado="${estado}" title="${esc(titulo)}"><span class="punto" aria-hidden="true"></span><span>${esc(texto)}</span>${boton}</div>`;
+  }).join("");
+  caja.querySelectorAll("[data-login]").forEach((b) => b.addEventListener("click", async () => {
+    try {
+      const { mensaje } = await api(`/api/sesiones/${b.dataset.login}/login`, { method: "POST", body: "{}" });
+      esperandoLogin[b.dataset.login] = Date.now();
+      avisar(mensaje);
+      revisarSesiones();
+    } catch (e) { avisar(e.message); }
+  }));
 }
 
-$("#kiro-reconectar").addEventListener("click", async () => {
-  try {
-    const { mensaje } = await api("/api/kiro/login", { method: "POST", body: "{}" });
-    kiroEsperando = Date.now();
-    avisar(mensaje);
-    revisarKiro();
-  } catch (e) { avisar(e.message); }
-});
-// Esperando el login: se fuerza la revisión cada 5 s durante 10 minutos. Si no, el servidor responde
-// con lo que revisó en el último minuto (no vuelve a consultar a Kiro).
+// Esperando un login: se fuerza la revisión cada 5 s durante 10 minutos. Si no, el servidor responde
+// con lo que revisó en el último minuto (no vuelve a consultar a la IA).
 setInterval(() => {
-  if (kiroEsperando && Date.now() - kiroEsperando > 10 * 60 * 1000) kiroEsperando = 0;
-  revisarKiro(!!kiroEsperando);
+  for (const [m, t0] of Object.entries(esperandoLogin)) if (Date.now() - t0 > 10 * 60 * 1000) delete esperandoLogin[m];
+  revisarSesiones(Object.keys(esperandoLogin).length > 0);
 }, 5000);
-revisarKiro();
+revisarSesiones();
 
 // Cambios en vivo (la IA mueve tareas, Kiro crea otras...)
 let recarga;

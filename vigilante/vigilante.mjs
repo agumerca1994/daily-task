@@ -17,12 +17,13 @@ import { backlog, backlogSpawn } from "../src/backlog.mjs";
 import { leerConfig, rutaInstrucciones } from "../src/bandeja.mjs";
 import { nombreAgente } from "../src/kiro.mjs";
 import { notificar } from "../src/notificar.mjs";
-import { estadoKiro } from "../src/sesion.mjs";
+import { estadoSesion } from "../src/sesion.mjs";
 import { ASISTENTE_MD } from "../src/rutas.mjs";
 
 const aqui = dirname(fileURLToPath(import.meta.url));
 const MOTORES = { kiro: join(aqui, "motores", "kiro.mjs"), claude: join(aqui, "motores", "claude.mjs") };
 const PENDIENTE = "Pendiente";
+const NOMBRE_IA = { kiro: "Kiro", claude: "Claude" };
 const PARA_AVISAR = ["Para revisar", "Esperando info"];
 
 /** Empieza a vigilar la bandeja. Devuelve { detener }. `alTerminar` se llama si --watch se corta. */
@@ -66,18 +67,17 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
     }
 
     encolar(nombre, ev.task.id, async () => {
-      // Sin sesión de Kiro la tarea queda en Pendiente (no se gasta un intento) y se retoma al reconectar
-      if (proyecto.motor === "kiro") {
-        const s = await estadoKiro();
-        if (!s.conectado) {
-          esperandoSesion = true;
-          log(`  ~ ${ev.task.id} espera: Kiro ${s.instalado ? "sin sesión" : "no está instalado"}`);
-          if (Date.now() - ultimoAvisoSesion > 60 * 60 * 1000) {
-            ultimoAvisoSesion = Date.now();
-            avisar("Kiro sin sesión", "Las tareas esperan. Reconectá desde el tablero (arriba a la derecha).");
-          }
-          return;
+      // Sin sesión de la IA la tarea queda en Pendiente (no se gasta un intento) y se retoma al reconectar
+      const s = await estadoSesion(proyecto.motor);
+      if (!s.conectado) {
+        const ia = NOMBRE_IA[proyecto.motor] ?? proyecto.motor;
+        esperandoSesion.add(proyecto.motor);
+        log(`  ~ ${ev.task.id} espera: ${ia} ${s.instalado ? "sin sesión" : "no está instalado"}`);
+        if (Date.now() - (ultimoAvisoSesion[proyecto.motor] ?? 0) > 60 * 60 * 1000) {
+          ultimoAvisoSesion[proyecto.motor] = Date.now();
+          avisar(`${ia} sin sesión`, "Las tareas esperan. Reconectá desde el tablero (arriba a la derecha).");
         }
+        return;
       }
       await ejecutarMotor();
     });
@@ -99,6 +99,7 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
           PROJECT_MODEL: proyecto.modelo ?? "",
           PROJECT_AGENT: nombreAgente(nombre, proyecto),
           PROJECT_ARCHIVOS: proyecto.archivos === "escritura" ? "escritura" : "lectura",
+          PROJECT_CONECTORES_JSON: JSON.stringify(proyecto.conectores ?? {}),
           PROJECT_CONECTORES: Object.entries(proyecto.conectores ?? {}).map(([s, x]) => `${s} (${Array.isArray(x) ? x.join("+") : x})`).join(", "),
           ASISTENTE_MD: ASISTENTE_MD,
           INSTRUCCIONES_MD: rutaInstrucciones(bandeja),
@@ -121,7 +122,7 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
             backlog(["task", "edit", ev.task.id, "-s", PENDIENTE], { cwd: bandeja });
             log(`  · ${ev.task.id} vuelve a Pendiente para reintentar`);
           }
-          if (/sesión|login/i.test(error)) { esperandoSesion = true; estadoKiro({ forzar: true }); }
+          if (/sesión|login/i.test(error)) { esperandoSesion.add(proyecto.motor); estadoSesion(proyecto.motor, { forzar: true }); }
           avisar(`${ev.task.id}: falló ${proyecto.motor}`, error.trim().split(/\r?\n/).at(-1) || `código ${code}`);
         }
         fin();
@@ -129,18 +130,21 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
     });
   }
 
-  // --- Sesión de Kiro: cuando vuelve, se procesa lo que quedó esperando
-  let esperandoSesion = false;
-  let ultimoAvisoSesion = 0;
+  // --- Sesión de cada IA: cuando vuelve, se procesa lo que quedó esperando
+  const esperandoSesion = new Set();
+  const ultimoAvisoSesion = {};
   const revisarSesion = setInterval(async () => {
-    if (!esperandoSesion) return;
-    const s = await estadoKiro({ forzar: true });
-    if (!s.conectado || !anterior) return;
-    esperandoSesion = false;
-    const pendientes = [...anterior.values()].filter((t) => t.status === PENDIENTE);
-    log(`Kiro reconectado: ${pendientes.length} tarea(s) pendiente(s)`);
-    if (pendientes.length) avisar("Kiro reconectado", `Procesando ${pendientes.length} tarea(s) pendiente(s).`);
-    for (const t of pendientes) despachar({ type: "task.created", task: t, inicial: true });
+    for (const motor of [...esperandoSesion]) {
+      const s = await estadoSesion(motor, { forzar: true });
+      if (!s.conectado || !anterior) continue;
+      esperandoSesion.delete(motor);
+      const proyectos = leerConfig(bandeja).proyectos;
+      const pendientes = [...anterior.values()].filter((t) => t.status === PENDIENTE && proyectos[t.project]?.motor === motor);
+      const ia = NOMBRE_IA[motor] ?? motor;
+      log(`${ia} reconectado: ${pendientes.length} tarea(s) pendiente(s)`);
+      if (pendientes.length) avisar(`${ia} reconectado`, `Procesando ${pendientes.length} tarea(s) pendiente(s).`);
+      for (const t of pendientes) despachar({ type: "task.created", task: t, inicial: true });
+    }
   }, 30 * 1000);
 
   function despachar(ev) {

@@ -9,7 +9,7 @@ import { basename, extname, join, normalize, sep } from "node:path";
 import { PUERTO_ADJUNTOS } from "./adjuntos.mjs";
 import { backlog } from "./backlog.mjs";
 import { ESTADOS, leerConfig } from "./bandeja.mjs";
-import { abrirLoginKiro, estadoKiro } from "./sesion.mjs";
+import { abrirLogin, estadoSesion } from "./sesion.mjs";
 import { borrarProyecto, guardarGeneral, guardarInstrucciones, guardarProyecto, leerConfiguracion, modelosKiro } from "./configuracion.mjs";
 import { REPO } from "./rutas.mjs";
 
@@ -179,12 +179,15 @@ export function servirTablero(bandeja, { puerto = PUERTO_TABLERO } = {}) {
       }
       if (req.method === "GET" && ruta === "/api/tareas") return json(res, 200, listar(bandeja));
 
-      // Sesión de Kiro (solo importa si algún proyecto lo usa)
-      if (req.method === "GET" && ruta === "/api/kiro") {
-        const usaKiro = Object.values(leerConfig(bandeja).proyectos).some((p) => p.motor === "kiro");
-        return json(res, 200, { usaKiro, ...(usaKiro ? await estadoKiro({ forzar: url.searchParams.has("ahora") }) : {}) });
+      // Sesión de cada IA que usan los proyectos
+      if (req.method === "GET" && ruta === "/api/sesiones") {
+        const usados = [...new Set(Object.values(leerConfig(bandeja).proyectos).map((p) => p.motor))];
+        const forzar = url.searchParams.has("ahora");
+        const sesiones = await Promise.all(usados.map(async (m) => ({ motor: m, ...(await estadoSesion(m, { forzar })) })));
+        return json(res, 200, sesiones);
       }
-      if (req.method === "POST" && ruta === "/api/kiro/login") return json(res, 200, { mensaje: abrirLoginKiro() });
+      const login = ruta.match(/^\/api\/sesiones\/(kiro|claude)\/login$/);
+      if (req.method === "POST" && login) return json(res, 200, { mensaje: abrirLogin(login[1]) });
 
       // Configuración
       if (req.method === "GET" && ruta === "/api/config") return json(res, 200, leerConfiguracion(bandeja));

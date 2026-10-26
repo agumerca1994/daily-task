@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { backlogCli } from "./backlog.mjs";
 import { leerConfig } from "./bandeja.mjs";
+import { buscarClaude } from "./claude.mjs";
 import { hayIcono } from "./icono.mjs";
 import { buscarKiro, sesionKiro } from "./kiro.mjs";
 import { BANDEJA_POR_DEFECTO, leerConfigUsuario, REPO } from "./rutas.mjs";
@@ -12,6 +13,7 @@ export function diagnostico() {
   let backlog = null;
   try { backlog = backlogCli(); } catch { /* falta */ }
   const kiro = buscarKiro();
+  const claude = buscarClaude();
   const bandeja = leerConfigUsuario().bandeja ?? null;
   const hayBandeja = bandeja && existsSync(join(bandeja, "backlog"));
   const proyectos = hayBandeja
@@ -22,6 +24,7 @@ export function diagnostico() {
     repo: REPO.replace(/\\/g, "/"),
     backlog,
     kiro: kiro ? { bin: kiro, sesion: sesionKiro(kiro) } : null,
+    claude: claude ? { bin: claude } : null,
     bandeja,
     bandejaPorDefecto: BANDEJA_POR_DEFECTO,
     proyectos,

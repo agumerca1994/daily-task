@@ -398,9 +398,17 @@ Objetivo: usarlo de verdad unos días con Kiro y SmartHome, cargando las tareas 
    herramienta `write` limitada a la carpeta del proyecto con `toolsSettings.write.allowedPaths` y SIN
    ponerla en `allowedTools` (si se pone, Kiro deja escribir en cualquier ruta: probado); fuera de la
    carpeta Kiro la bloquea. Cambios en dos pasos (propuestos, aprobación, archivos modificados).
-12. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
+12. [x] **Claude Code a la par de Kiro** (spike S8): Claude Code instalado con winget; motor con el
+   ejecutable propio, MCP de la bandeja, conectores del proyecto desde `.mcp.json` (pasado como
+   archivo con `--mcp-config`), permisos de archivos y conectores con `--allowedTools`; sesión en el
+   tablero (`claude auth status` / `claude auth login`) y espera/reintento como Kiro; "Conectar con
+   Claude Code" en los instaladores (MCP de usuario + bloque en `~/.claude/CLAUDE.md`). Probado de punta
+   a punta con un proyecto de prueba: análisis con el contexto del proyecto (41 s), tarea creada desde
+   el chat de Claude, y cambio de archivo en dos pasos (propuesta, aprobación, aplicado, solo dentro
+   del proyecto). Falta probar conectores de Claude con un MCP real.
+13. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
    `conocimiento/SmartHome/` lo que no está en el repo.
-13. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
+14. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
    en `conocimiento/<proyecto>/casos/`.
 
 **Criterio de salida:**

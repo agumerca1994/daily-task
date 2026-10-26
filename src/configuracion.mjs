@@ -22,7 +22,8 @@ export function leerConfiguracion(bandeja) {
       archivos: p.archivos === "escritura" ? "escritura" : "lectura",
       conectores: p.conectores ?? {},
       // Conectores del proyecto y si "lectura" se puede resolver solo
-      disponibles: conectoresDelProyecto(p.carpeta).map((s) => ({ nombre: s, lecturaConocida: !!permitidas(s, "lectura") })),
+      archivoConectores: p.motor === "claude" ? ".mcp.json" : ".kiro/settings/mcp.json",
+      disponibles: conectoresDelProyecto(p.carpeta, p.motor).map((s) => ({ nombre: s, lecturaConocida: !!permitidas(s, "lectura", p.motor) })),
     })),
   };
 }
@@ -34,10 +35,11 @@ export function guardarProyecto(bandeja, { nombre, carpeta, motor, modelo, conec
   agregarProyecto(bandeja, { nombre: (nombre ?? "").trim(), carpeta: (carpeta ?? "").trim().replace(/^"|"$/g, ""), motor, modelo: (modelo ?? "").trim() || undefined });
   if (archivos) definirArchivos(bandeja, nombre, archivos);
   if (conectores) {
-    const disponibles = conectoresDelProyecto(leerConfig(bandeja).proyectos[nombre].carpeta);
+    const guardado = leerConfig(bandeja).proyectos[nombre];
+    const disponibles = conectoresDelProyecto(guardado.carpeta, guardado.motor);
     for (const [s, permiso] of Object.entries(conectores)) {
       if (!disponibles.includes(s)) throw new Error(`${nombre} no tiene el conector ${s}.`);
-      if (!permitidas(s, permiso)) throw new Error(`No sé cuáles herramientas de ${s} son de lectura: configuralo por comando con la lista de herramientas.`);
+      if (!permitidas(s, permiso, guardado.motor)) throw new Error(`No sé cuáles herramientas de ${s} son de lectura: configuralo por comando con la lista de herramientas.`);
     }
     definirConectores(bandeja, nombre, conectores);
   }

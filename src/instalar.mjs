@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { crearAccesos, quitarAccesos } from "./accesos.mjs";
 import { autoinicio } from "./autoinicio.mjs";
+import { buscarClaude, instalarInstruccionesClaude, registrarMcpClaude } from "./claude.mjs";
 import { compilarIcono, hayIcono, lanzarIcono, RUTA_EXE } from "./icono.mjs";
 import { backlogCli } from "./backlog.mjs";
 import { agregarProyecto, crearBandeja, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
@@ -50,6 +51,15 @@ export async function instalarDesdeArchivo(ruta) {
     for (const p of pedidos) {
       agregarProyecto(bandeja, { nombre: p.nombre, carpeta: p.carpeta, motor: p.motor || "kiro" });
       paso(`OK: proyecto ${p.nombre} (${p.motor || "kiro"}) en ${barras(p.carpeta)}`);
+    }
+
+    if (c.claude) {
+      if (!buscarClaude()) paso("AVISO: no encontré Claude Code; instalalo y volvé a ejecutar el instalador");
+      else {
+        registrarMcpClaude(bandeja);
+        instalarInstruccionesClaude(Object.keys(leerConfig(bandeja).proyectos));
+        paso("OK: conectado con Claude Code (acceso a la bandeja desde el chat e instrucciones)");
+      }
     }
 
     if (c.kiro) {
@@ -171,6 +181,21 @@ Si cargás un solo proyecto, todas las tareas van a ese.`);
           "  Kiro ya apuntaba a otra bandeja. ¿Cambiarlo a esta?", true))) registrarMcpUsuario(bandeja);
         instalarSteering(Object.keys(leerConfig(bandeja).proyectos));
         console.log(`OK (${RUTA_AGENTE}, ${RUTA_MCP_USUARIO}, ${RUTA_STEERING})`);
+      }
+    }
+
+    // 4b. Claude Code
+    const claude = buscarClaude();
+    if (claude) {
+      const usanClaude = Object.values(leerConfig(bandeja).proyectos).some((p) => p.motor === "claude");
+      console.log("\n== Conexión con Claude Code");
+      console.log(`Se agrega a tu usuario de Claude Code (no a tus proyectos) el acceso a la bandeja desde el chat
+  y las instrucciones para crear y retomar tareas. Los proyectos que atiende Claude no necesitan más que esto.`);
+      if (await confirmar("¿Conectar con Claude Code?", usanClaude)) {
+        try {
+          registrarMcpClaude(bandeja);
+          console.log(`OK (MCP backlog de usuario, ${instalarInstruccionesClaude(Object.keys(leerConfig(bandeja).proyectos))})`);
+        } catch (e) { console.log(`No se pudo: ${e.message}`); }
       }
     }
 

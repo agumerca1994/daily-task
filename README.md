@@ -10,7 +10,8 @@ sola **con el contexto del proyecto al que pertenece cada tarea**.
   respuesta) y deja la tarea en **Para revisar** o **Esperando info**.
 - Si respondés lo que falta y la volvés a **Pendiente**, la retoma.
 
-Motores: **Kiro CLI** (probado) y **Claude Code** (en prueba). Funciona en Windows, Linux y macOS.
+Motores: **Kiro CLI** y **Claude Code** (los dos probados), elegibles por proyecto. Funciona en Windows,
+Linux y macOS.
 El plan completo está en [PLAN.md](PLAN.md).
 
 ## Requisitos
@@ -130,15 +131,31 @@ escritura**:
   respondés aprobándolos, y al final lista los *Archivos modificados* (si es un repo, revisalos con
   `git diff`).
 
-## Sesión de Kiro
+## Claude Code
 
-Arriba a la derecha del tablero se ve si Kiro tiene sesión (**● Kiro conectado** / **● Kiro sin sesión**).
-Si se desconecta (por ejemplo, fuera del horario laboral):
+Funciona igual que Kiro; se elige por proyecto (**Configuración → IA que lo atiende: claude**).
+
+- Requisito: Claude Code instalado y con sesión (`winget install Anthropic.ClaudeCode` en Windows, o el
+  instalador oficial; `claude auth login`).
+- El contexto del proyecto sale de su `CLAUDE.md`; las instrucciones del asistente se le pasan en cada
+  tarea.
+- Conectores: los de `<proyecto>/.mcp.json` (el archivo se le pasa a Claude tal cual: las credenciales
+  no se copian), con los mismos permisos No / Lectura / Escritura.
+- Permiso de archivos: con escritura, Claude solo edita dentro de la carpeta del proyecto.
+- **Conectar con Claude Code** (instalador): registra la bandeja en tu usuario de Claude
+  (`claude mcp add --scope user`) y agrega un bloque de instrucciones a `~/.claude/CLAUDE.md` (el resto
+  del archivo no se toca), para crear y retomar tareas desde el chat de Claude.
+- En el trabajo, usá Kiro (homologado): Claude es para proyectos sin datos de la empresa.
+
+## Sesión de cada IA
+
+Arriba a la derecha del tablero se ve si cada IA que usan tus proyectos tiene sesión (**● Kiro conectado**,
+**● Claude sin sesión**…). Si una se desconecta (por ejemplo, Kiro fuera del horario laboral):
 
 - Las tareas nuevas **esperan en Pendiente**: no se gastan intentos ni quedan trabadas, y llega un solo
   aviso por hora.
-- **Reconectar** abre la ventana de inicio de sesión de Kiro ya completada con los datos de tu cuenta
-  (se recuerdan de la última sesión): confirmás con Enter y aprobás en el navegador. El login de Kiro
+- **Reconectar** abre la ventana de inicio de sesión de esa IA (la de Kiro ya completada con los datos
+  de tu cuenta, que se recuerdan de la última sesión); se completa ahí y en el navegador. El login
   necesita una terminal, por eso se abre esa ventana.
 - Al volver la sesión, el asistente procesa solo lo que quedó pendiente y avisa.
 - Si una tarea se corta a mitad de camino porque venció la sesión, vuelve a Pendiente para reintentar.
