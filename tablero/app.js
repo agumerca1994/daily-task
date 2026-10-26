@@ -11,6 +11,11 @@ const ESTADOS = {
 };
 const PRIORIDAD = { high: "Alta", medium: "Media", low: "Baja" };
 const MAX_RESUELTAS = 8;
+const NOMBRE_IA = { kiro: "Kiro", claude: "Claude" };
+
+// IA del proyecto de una tarea y si está esperando que esa IA tenga sesión
+const motorDe = (t) => estado.motores?.[t.proyecto] ?? (estado.proyectos.length === 1 ? estado.motores?.[estado.proyectos[0]] : null);
+const esperaSesion = (t) => t.estado === "Pendiente" && !!motorDe(t) && (estado.sinSesion ?? []).includes(motorDe(t));
 
 const estado = { tareas: [], proyectos: [], filtro: "Todos", texto: "", abierta: null, verResueltas: false, imagenes: [] };
 
@@ -97,6 +102,7 @@ async function cargar() {
   try {
     const [cfg, tareas] = await Promise.all([api("/api/estado"), api("/api/tareas")]);
     estado.proyectos = cfg.proyectos;
+    estado.motores = cfg.motores ?? {};
     estado.tareas = tareas;
     dibujarProyectos();
     dibujar();
@@ -129,8 +135,12 @@ function dibujar() {
   const cuenta = (e) => lista.filter((t) => t.estado === e).length;
   const vos = cuenta("Para revisar") + cuenta("Esperando info");
   const ia = cuenta("Pendiente") + cuenta("En análisis");
+  const esperando = lista.filter(esperaSesion);
+  const iasCaidas = [...new Set(esperando.map((t) => NOMBRE_IA[motorDe(t)] ?? motorDe(t)))];
   const frase = vos === 0 ? "Nada te espera." : vos === 1 ? "<b>1 tarea</b> espera tu mirada." : `<b>${vos} tareas</b> esperan tu mirada.`;
-  const fraseIA = ia === 0 ? " La IA está libre." : ` <span class="ia">La IA está con ${ia}.</span>`;
+  const fraseIA = esperando.length
+    ? ` <span class="espera">${esperando.length === 1 ? "1 tarea espera" : `${esperando.length} tareas esperan`} que reconectes ${iasCaidas.join(" y ")}.</span>`
+    : ia === 0 ? " La IA está libre." : ` <span class="ia">La IA está con ${ia}.</span>`;
   $("#situacion").innerHTML = frase + fraseIA;
 
   for (const col of document.querySelectorAll(".columna")) {
@@ -161,6 +171,7 @@ function tarjeta(t) {
       ${t.etiquetas.map((e) => `<span class="chip">${esc(e)}</span>`).join("")}
     </span>
     ${t.estado === "En análisis" ? '<span class="trabajando" aria-label="La IA la está analizando"></span>' : ""}
+    ${esperaSesion(t) ? `<span class="espera-sesion">Espera que reconectes ${esc(NOMBRE_IA[motorDe(t)] ?? motorDe(t))}</span>` : ""}
   </button></li>`;
 }
 
@@ -380,12 +391,14 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ---------------------------------------------------------------- Sesión de cada IA
-const NOMBRE_IA = { kiro: "Kiro", claude: "Claude" };
 const esperandoLogin = {}; // motor -> momento en que se abrió el login (se revisa más seguido)
 
 async function revisarSesiones(ahora = false) {
   let sesiones;
   try { sesiones = await api(`/api/sesiones${ahora ? "?ahora" : ""}`); } catch { return; }
+  const antes = JSON.stringify(estado.sinSesion);
+  estado.sinSesion = sesiones.filter((s) => !s.conectado).map((s) => s.motor);
+  if (JSON.stringify(estado.sinSesion) !== antes) dibujar();
   const caja = $("#sesiones");
   caja.innerHTML = sesiones.map((s) => {
     const ia = NOMBRE_IA[s.motor] ?? s.motor;

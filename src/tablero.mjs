@@ -175,7 +175,8 @@ export function servirTablero(bandeja, { puerto = PUERTO_TABLERO } = {}) {
 
       if (req.method === "GET" && ruta === "/api/estado") {
         const cfg = leerConfig(bandeja);
-        return json(res, 200, { estados: ESTADOS, proyectos: Object.keys(cfg.proyectos), porDefecto: cfg.proyectoPorDefecto, bandeja });
+        const motores = Object.fromEntries(Object.entries(cfg.proyectos).map(([n, p]) => [n, p.motor]));
+        return json(res, 200, { estados: ESTADOS, proyectos: Object.keys(cfg.proyectos), motores, porDefecto: cfg.proyectoPorDefecto, bandeja });
       }
       if (req.method === "GET" && ruta === "/api/tareas") return json(res, 200, listar(bandeja));
 

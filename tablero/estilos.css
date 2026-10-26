@@ -88,6 +88,10 @@ main { padding: 20px 24px 48px; }
 }
 .situacion b { font-weight: 700; color: var(--azul); }
 .situacion .ia { color: var(--analisis); }
+.situacion .espera { color: var(--espera); }
+.espera-sesion {
+  display: block; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--espera);
+}
 
 /* ---------------------------------------------------------------- Tablero */
 .tablero { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 20px; align-items: start; }
