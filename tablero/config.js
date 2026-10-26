@@ -83,6 +83,15 @@ function tarjetaProyecto(p) {
       </span>
     </div>
     <p class="aviso-escritura" data-aviso="archivos" ${p.archivos === "escritura" ? "" : "hidden"}>Solo dentro de esta carpeta, y te propone los cambios antes de aplicarlos.</p>
+    <div class="campo"><span>Comandos que puede ejecutar</span>
+      <div class="comandos">
+        ${p.comandos.map(chipComando).join("")}
+        <span class="agregar-comando">
+          <input data-nuevo-comando spellcheck="false" placeholder="node tools/mi-herramienta/cli.js" aria-label="Comando nuevo">
+          <button class="boton chico" type="button" data-agregar-comando>Agregar</button>
+        </span>
+      </div>
+    </div>
     <div class="campo"><span>Conectores que puede usar la IA</span>
       <div class="conectores">${conectores}</div>
     </div>
@@ -151,9 +160,13 @@ function leerTarjeta(art) {
     motor: art.querySelector('[name="motor"]').value,
     archivos: art.querySelector("input[data-archivos]:checked")?.value ?? "lectura",
     modelo: art.querySelector('[name="modelo"]').value,
+    comandos: [...art.querySelectorAll("[data-comando]")].map((e) => e.dataset.comando),
     conectores,
   };
 }
+
+const chipComando = (c) => `<span class="chip comando" data-comando="${esc(c)}"><code>${esc(c)}</code>
+  <button type="button" data-quitar-comando aria-label="Quitar ${esc(c)}">×</button></span>`;
 
 function conectarConfig() {
   document.querySelectorAll(".conf-proyecto").forEach((art) => {
@@ -164,8 +177,26 @@ function conectarConfig() {
       art.querySelector('[data-aviso="conectores"]').hidden = !conEscritura;
       art.querySelector('[data-aviso="archivos"]').hidden = art.querySelector("input[data-archivos]:checked")?.value !== "escritura";
     };
-    art.querySelectorAll("input, select").forEach((el) => el.addEventListener("change", marcar));
+    art.querySelectorAll("input:not([data-nuevo-comando]), select").forEach((el) => el.addEventListener("change", marcar));
     art.querySelector('[name="carpeta"]').addEventListener("input", marcar);
+    // Comandos: chips con × y un campo para agregar
+    const cajaComandos = art.querySelector(".comandos");
+    const nuevo = art.querySelector("[data-nuevo-comando]");
+    cajaComandos.addEventListener("click", (e) => {
+      if (e.target.matches("[data-quitar-comando]")) { e.target.closest("[data-comando]").remove(); marcar(); }
+    });
+    const agregar = () => {
+      const c = nuevo.value.trim().replace(/\s+/g, " ");
+      if (!c) return nuevo.focus();
+      if (/[;&|<>`$]/.test(c)) return avisar("Un comando por vez, sin ; & | < > ` ni $.");
+      if (/--allow-expensive|--force/.test(c)) return avisar("--allow-expensive y --force siempre quedan bloqueados.");
+      if ([...art.querySelectorAll("[data-comando]")].some((e) => e.dataset.comando === c)) return avisar("Ese comando ya está.");
+      nuevo.closest(".agregar-comando").insertAdjacentHTML("beforebegin", chipComando(c));
+      nuevo.value = "";
+      marcar();
+    };
+    art.querySelector("[data-agregar-comando]").addEventListener("click", agregar);
+    nuevo.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); agregar(); } });
     // Cambiar de IA cambia el tipo de campo de modelo
     art.querySelector('[name="motor"]').addEventListener("change", (e) => {
       const p = conf.datos.proyectos.find((x) => x.nombre === art.dataset.nombre);

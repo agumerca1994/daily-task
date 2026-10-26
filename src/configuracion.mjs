@@ -2,7 +2,7 @@
 // comandos `asistente proyecto ...`, así ambos caminos quedan siempre iguales.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { agregarProyecto, definirArchivos, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto, rutaInstrucciones } from "./bandeja.mjs";
+import { agregarProyecto, definirArchivos, definirComandos, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto, rutaInstrucciones } from "./bandeja.mjs";
 import { buscarKiro, conectoresDelProyecto, permitidas } from "./kiro.mjs";
 import { actualizarKiro } from "./proyectos.mjs";
 
@@ -20,20 +20,22 @@ export function leerConfiguracion(bandeja) {
       motor: p.motor,
       modelo: p.modelo ?? "",
       archivos: p.archivos === "escritura" ? "escritura" : "lectura",
+      comandos: p.comandos ?? [],
       conectores: p.conectores ?? {},
       // Conectores del proyecto y si "lectura" se puede resolver solo
-      archivoConectores: p.motor === "claude" ? ".mcp.json" : ".kiro/settings/mcp.json",
+      archivoConectores: p.motor === "claude" ? ".mcp.json (o .kiro/settings/mcp.json)" : ".kiro/settings/mcp.json",
       disponibles: conectoresDelProyecto(p.carpeta, p.motor).map((s) => ({ nombre: s, lecturaConocida: !!permitidas(s, "lectura", p.motor) })),
     })),
   };
 }
 
-export function guardarProyecto(bandeja, { nombre, carpeta, motor, modelo, conectores, archivos, nuevo }) {
+export function guardarProyecto(bandeja, { nombre, carpeta, motor, modelo, conectores, archivos, comandos, nuevo }) {
   const cfg = leerConfig(bandeja);
   if (nuevo && cfg.proyectos[nombre]) throw new Error(`Ya existe un proyecto llamado ${nombre}.`);
   if (!nuevo && !cfg.proyectos[nombre]) throw new Error(`No existe el proyecto ${nombre}.`);
   agregarProyecto(bandeja, { nombre: (nombre ?? "").trim(), carpeta: (carpeta ?? "").trim().replace(/^"|"$/g, ""), motor, modelo: (modelo ?? "").trim() || undefined });
   if (archivos) definirArchivos(bandeja, nombre, archivos);
+  if (comandos) definirComandos(bandeja, nombre, comandos);
   if (conectores) {
     const guardado = leerConfig(bandeja).proyectos[nombre];
     const disponibles = conectoresDelProyecto(guardado.carpeta, guardado.motor);

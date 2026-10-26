@@ -1,7 +1,7 @@
 // `asistente proyecto ...`: qué proyectos atiende la bandeja, en qué carpeta, con qué motor y con qué
 // conectores (Jira, Confluence...) del propio proyecto.
 import { existsSync } from "node:fs";
-import { agregarProyecto, definirArchivos, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
+import { agregarProyecto, definirArchivos, definirComandos, definirConectores, guardarConfig, leerConfig, MOTORES, quitarProyecto } from "./bandeja.mjs";
 import { conectoresDelProyecto, instalarAgente, instalarSteering, permitidas, RUTA_AGENTE, RUTA_STEERING } from "./kiro.mjs";
 import { barras, leerConfigUsuario } from "./rutas.mjs";
 import { hayInstruccionesClaude, instalarInstruccionesClaude } from "./claude.mjs";
@@ -30,7 +30,7 @@ export function listarProyectos(bandeja) {
     const p = cfg.proyectos[n];
     const marca = cfg.proyectoPorDefecto === n ? " (por defecto)" : "";
     const con = Object.entries(p.conectores ?? {}).map(([s, x]) => `${s}: ${textoPermiso(x)}`).join(", ");
-    const arch = p.archivos === "escritura" ? "lectura y escritura" : "solo lectura";
+    const arch = (p.archivos === "escritura" ? "lectura y escritura" : "solo lectura") + (p.comandos?.length ? ` — comandos: ${p.comandos.join(", ")}` : "");
     console.log(`- ${n}${marca}: ${p.motor}${p.modelo ? ` / ${p.modelo}` : ""} en ${p.carpeta} — archivos: ${arch}${con ? ` — conectores: ${con}` : ""}`);
   }
 }
@@ -75,6 +75,22 @@ export function comandoProyecto(bandeja, [accion, nombre, carpeta, ...resto], op
       return console.log(cfg.proyectoPorDefecto
         ? `Las tareas sin proyecto van a ${nombre}.` : "Las tareas sin proyecto no se procesan.");
     }
+    case "comandos": {
+      // asistente proyecto comandos <nombre> ["comando 1" "comando 2" ...] | ninguno
+      const lista = [carpeta, ...resto].filter(Boolean);
+      if (!lista.length) {
+        const p = leerConfig(bandeja).proyectos[nombre];
+        if (!p) throw new Error(`No existe el proyecto ${nombre}`);
+        return console.log(p.comandos?.length
+          ? `Comandos de ${nombre}:\n${p.comandos.map((c) => `  - ${c}`).join("\n")}`
+          : `${nombre} no tiene comandos habilitados.`);
+      }
+      const p = definirComandos(bandeja, nombre, lista[0] === "ninguno" ? [] : lista);
+      actualizarKiro(bandeja);
+      return console.log(p.comandos?.length
+        ? `${nombre}: la IA puede ejecutar ${p.comandos.join(", ")} (nunca con --allow-expensive ni --force).`
+        : `${nombre}: la IA no puede ejecutar comandos.`);
+    }
     case "archivos": {
       // asistente proyecto archivos <nombre> lectura|escritura
       const p = definirArchivos(bandeja, nombre, carpeta);
@@ -106,6 +122,6 @@ export function comandoProyecto(bandeja, [accion, nombre, carpeta, ...resto], op
       return mostrarConectores(bandeja, nombre);
     }
     default:
-      throw new Error(`Acción desconocida: ${accion} (listar, agregar, quitar, por-defecto, archivos, conectores; motores: ${MOTORES.join(", ")})`);
+      throw new Error(`Acción desconocida: ${accion} (listar, agregar, quitar, por-defecto, archivos, comandos, conectores; motores: ${MOTORES.join(", ")})`);
   }
 }

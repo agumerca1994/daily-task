@@ -406,9 +406,20 @@ Objetivo: usarlo de verdad unos días con Kiro y SmartHome, cargando las tareas 
    a punta con un proyecto de prueba: análisis con el contexto del proyecto (41 s), tarea creada desde
    el chat de Claude, y cambio de archivo en dos pasos (propuesta, aprobación, aplicado, solo dentro
    del proyecto). Falta probar conectores de Claude con un MCP real.
-13. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
+13. [x] **Proyectos armados para Kiro, atendidos por Claude**: el motor de Claude suma el steering de
+   Kiro (`.kiro/steering/*.md`) y `AGENTS.md` a las instrucciones (en un archivo: juntas superan el largo
+   máximo de un comando en Windows) y usa `.kiro/settings/mcp.json` como conectores si no hay
+   `.mcp.json` (mismo formato, probado). Las tareas que esperaban sesión se revisan contra la IA actual
+   del proyecto. Probado con Smarthome: dos tareas reales procesadas con Claude usando skills, docs,
+   steering y adjuntos del proyecto.
+14. [x] **Comandos permitidos por proyecto** (`proyecto comandos`, chips en Configuración): Claude con
+   `Bash(cmd:*)`/`PowerShell(cmd:*)` en `--allowedTools` y `--allow-expensive`/`--force` en
+   `--disallowedTools` (probado: permitido corre, con la opción bloqueada o cualquier otro comando,
+   rechazado); Kiro con `toolsSettings.shell.allowedCommands/deniedCommands` y `shell` fuera de
+   allowedTools (falta probarlo: Kiro sin sesión). Probado con Smarthome y `tools/cloudwatch-logs` (doctor).
+15. [ ] **Afinar con casos reales**: completar `instrucciones.md` (rol, área, a quién escalar) y cargar en
    `conocimiento/SmartHome/` lo que no está en el repo.
-14. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
+16. [ ] *(Opcional)* **"Archivar como conocimiento"**: a partir de una tarea `Resuelta`, generar una ficha
    en `conocimiento/<proyecto>/casos/`.
 
 **Criterio de salida:**

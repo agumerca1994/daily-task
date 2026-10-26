@@ -6,6 +6,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { comandoBacklog } from "./backlog.mjs";
 import { conectoresClaude, permitidasClaude } from "./claude.mjs";
+import { permisoShellKiro } from "./comandos.mjs";
 import { ASISTENTE_MD, REPO } from "./rutas.mjs";
 import { rutaInstrucciones } from "./bandeja.mjs";
 
@@ -65,7 +66,7 @@ const LECTURA = [
 export const slug = (nombre) => nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 /** Un proyecto con conectores o con escritura en sus archivos usa un agente propio. */
 export const necesitaAgentePropio = (cfg) =>
-  !!((cfg?.conectores && Object.keys(cfg.conectores).length) || cfg?.archivos === "escritura");
+  !!((cfg?.conectores && Object.keys(cfg.conectores).length) || cfg?.archivos === "escritura" || cfg?.comandos?.length);
 export const nombreAgente = (proyecto, cfg) => (necesitaAgentePropio(cfg) ? `${AGENTE}-${slug(proyecto)}` : AGENTE);
 
 /** Herramientas de solo lectura conocidas de un conector, o null. */
@@ -107,6 +108,7 @@ export function instalarAgente(bandeja, proyectos = {}) {
     agente.name = nombreAgente(nombre, p);
     const partes = [
       p.archivos === "escritura" ? "archivos: lectura y escritura" : "archivos: solo lectura",
+      ...(p.comandos?.length ? [`comandos: ${p.comandos.join(", ")}`] : []),
       ...conectores.map(([s, x]) => `${s}: ${Array.isArray(x) ? x.join("+") : x}`),
     ];
     agente.description = `Asistente de tareas del proyecto ${nombre} (${partes.join(", ")})`;
@@ -116,6 +118,10 @@ export function instalarAgente(bandeja, proyectos = {}) {
       agente.tools.push("write");
       agente.toolsSettings = { ...(agente.toolsSettings ?? {}), write: { allowedPaths: [`${p.carpeta.replace(/\\/g, "/")}/**`] } };
       agente.prompt = agente.prompt.replace("solo leés sus archivos", "podés modificar sus archivos solo como indica asistente.md");
+    }
+    if (p.comandos?.length) {
+      agente.tools.push("shell");
+      agente.toolsSettings = { ...(agente.toolsSettings ?? {}), shell: permisoShellKiro(p.comandos) };
     }
     if (conectores.length) agente.includeMcpJson = true;
     for (const [servidor, permiso] of conectores) {

@@ -4,8 +4,11 @@
 // pasa como archivo: las credenciales no se copian). En modo -p, Claude rechaza cualquier herramienta
 // que no esté en --allowedTools.
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { buscarClaude, mcpBandeja, rutaMcpProyecto } from "../../src/claude.mjs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buscarClaude, contextoKiroDelProyecto, mcpBandeja, rutaMcpProyecto } from "../../src/claude.mjs";
+import { bloqueadosClaude, permitidosClaude } from "../../src/comandos.mjs";
 import { permitidas } from "../../src/kiro.mjs";
 import { promptProcesar, terminar } from "./comun.mjs";
 
@@ -14,7 +17,12 @@ if (!claude) terminar(1, "No encuentro Claude Code (claude). Instalalo o definí
 
 const { BANDEJA: bandeja, ASISTENTE_MD, INSTRUCCIONES_MD, PROJECT_DIR: carpeta } = process.env;
 const leer = (p) => { try { return readFileSync(p, "utf8"); } catch { return ""; } };
-const sistema = [leer(ASISTENTE_MD), leer(INSTRUCCIONES_MD)].filter(Boolean).join("\n\n---\n\n");
+// Instrucciones del asistente + las propias + el contexto armado para Kiro (steering, AGENTS.md), que
+// Claude no carga solo. Van en un archivo: juntas pueden superar el largo máximo de un comando en Windows.
+const sistema = [leer(ASISTENTE_MD), leer(INSTRUCCIONES_MD), contextoKiroDelProyecto(carpeta)].filter(Boolean).join("\n\n---\n\n");
+const archivoSistema = join(tmpdir(), `asistente-claude-${process.pid}.md`);
+writeFileSync(archivoSistema, sistema);
+process.on("exit", () => rmSync(archivoSistema, { force: true }));
 
 const herramientas = ["mcp__backlog", "Read", "Glob", "Grep"];
 // Archivos del proyecto: con escritura, Claude solo edita dentro de la carpeta de trabajo y las
@@ -24,17 +32,23 @@ if (process.env.PROJECT_ARCHIVOS === "escritura") herramientas.push("Edit", "Wri
 const mcp = [JSON.stringify(mcpBandeja(bandeja))];
 let conectores = {};
 try { conectores = JSON.parse(process.env.PROJECT_CONECTORES_JSON || "{}"); } catch { /* sin conectores */ }
-if (Object.keys(conectores).length && existsSync(rutaMcpProyecto(carpeta))) {
-  mcp.push(rutaMcpProyecto(carpeta));
+let comandos = [];
+try { comandos = JSON.parse(process.env.PROJECT_COMANDOS_JSON || "[]"); } catch { /* sin comandos */ }
+herramientas.push(...permitidosClaude(comandos));
+
+const mcpProyecto = rutaMcpProyecto(carpeta);
+if (Object.keys(conectores).length && mcpProyecto) {
+  mcp.push(mcpProyecto);
   for (const [servidor, permiso] of Object.entries(conectores)) herramientas.push(...(permitidas(servidor, permiso, "claude") ?? []));
 }
 
 const args = [
   "-p", promptProcesar(),
-  "--append-system-prompt", sistema,
+  "--append-system-prompt-file", archivoSistema,
   "--mcp-config", ...mcp,
   "--add-dir", bandeja,
   "--allowedTools", ...herramientas,
+  "--disallowedTools", ...bloqueadosClaude(),
   "--no-session-persistence",
 ];
 if (process.env.PROJECT_MODEL) args.push("--model", process.env.PROJECT_MODEL);

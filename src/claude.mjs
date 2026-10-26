@@ -103,11 +103,34 @@ export function quitarInstruccionesClaude() {
 export const hayInstruccionesClaude = () => existsSync(RUTA_CLAUDE_MD) && readFileSync(RUTA_CLAUDE_MD, "utf8").includes(INICIO);
 
 // ---------------------------------------------------------------- Conectores del proyecto
-export const rutaMcpProyecto = (carpeta) => join(carpeta, ".mcp.json");
+/**
+ * Configuración MCP que usa Claude en un proyecto: su .mcp.json o, si no tiene, la de Kiro
+ * (.kiro/settings/mcp.json, que tiene el mismo formato: probado). null si no hay ninguna.
+ */
+export function rutaMcpProyecto(carpeta) {
+  return [join(carpeta, ".mcp.json"), join(carpeta, ".kiro", "settings", "mcp.json")].find(existsSync) ?? null;
+}
+
+/** Contexto del proyecto armado para Kiro que Claude no carga solo: .kiro/steering/*.md y AGENTS.md. */
+export function contextoKiroDelProyecto(carpeta) {
+  const partes = [];
+  const dir = join(carpeta, ".kiro", "steering");
+  if (existsSync(dir)) {
+    for (const f of readdirSync(dir).filter((n) => n.endsWith(".md")).sort()) {
+      const texto = readFileSync(join(dir, f), "utf8").replace(/^---[\s\S]*?---\s*/, "");
+      partes.push(`## Steering del proyecto: ${f}\n\n${texto.trim()}`);
+    }
+  }
+  const agents = join(carpeta, "AGENTS.md");
+  if (existsSync(agents)) partes.push(`## AGENTS.md del proyecto\n\n${readFileSync(agents, "utf8").trim()}`);
+  return partes.join("\n\n---\n\n");
+}
 
 export function conectoresClaude(carpeta) {
   try {
-    const cfg = JSON.parse(readFileSync(rutaMcpProyecto(carpeta), "utf8"));
+    const ruta = rutaMcpProyecto(carpeta);
+    if (!ruta) return [];
+    const cfg = JSON.parse(readFileSync(ruta, "utf8"));
     return Object.entries(cfg.mcpServers ?? {}).filter(([, v]) => !v.disabled).map(([k]) => k);
   } catch { return []; }
 }

@@ -75,6 +75,20 @@ carpeta del proyecto (Kiro lo bloquea) y nunca en la bandeja a mano.
 
 No borres archivos ni hagas cambios que la tarea no pidió.
 
+## Comandos del proyecto
+
+El pedido te dice qué comandos podés ejecutar (por ejemplo `node tools/cloudwatch-logs/cli.js`). Solo
+esos; la IA bloquea el resto.
+
+- Ejecutalos **desde la raíz del proyecto** y con la ruta tal como figura (no hagas `cd`).
+- Seguí las reglas del proyecto para esa herramienta (steering, README): por ejemplo, estimar el costo
+  antes de consultar, no repetir una consulta que ya está en `out/`, informar el costo real.
+- `--allow-expensive` y `--force` están bloqueados: si hacen falta, explicá por qué en la tarea y
+  dejala en `Para revisar` para que el usuario lo corra.
+- Si el comando falla por credenciales vencidas o falta de acceso (VPN, permisos), no reintentes:
+  ponelo en **Falta** ("renovar credenciales de AWS") y dejá la tarea en `Esperando info`.
+- En **Fuentes** anotá qué comandos ejecutaste y qué devolvieron (resumido).
+
 ## Conectores del proyecto (Jira, Confluence...)
 
 El pedido te dice qué conectores tiene habilitados el proyecto y con qué permiso. Solo podés usar

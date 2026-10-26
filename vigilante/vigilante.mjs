@@ -71,7 +71,7 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
       const s = await estadoSesion(proyecto.motor);
       if (!s.conectado) {
         const ia = NOMBRE_IA[proyecto.motor] ?? proyecto.motor;
-        esperandoSesion.add(proyecto.motor);
+        enEspera.add(ev.task.id);
         log(`  ~ ${ev.task.id} espera: ${ia} ${s.instalado ? "sin sesión" : "no está instalado"}`);
         if (Date.now() - (ultimoAvisoSesion[proyecto.motor] ?? 0) > 60 * 60 * 1000) {
           ultimoAvisoSesion[proyecto.motor] = Date.now();
@@ -100,6 +100,7 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
           PROJECT_AGENT: nombreAgente(nombre, proyecto),
           PROJECT_ARCHIVOS: proyecto.archivos === "escritura" ? "escritura" : "lectura",
           PROJECT_CONECTORES_JSON: JSON.stringify(proyecto.conectores ?? {}),
+          PROJECT_COMANDOS_JSON: JSON.stringify(proyecto.comandos ?? []),
           PROJECT_CONECTORES: Object.entries(proyecto.conectores ?? {}).map(([s, x]) => `${s} (${Array.isArray(x) ? x.join("+") : x})`).join(", "),
           ASISTENTE_MD: ASISTENTE_MD,
           INSTRUCCIONES_MD: rutaInstrucciones(bandeja),
@@ -122,7 +123,7 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
             backlog(["task", "edit", ev.task.id, "-s", PENDIENTE], { cwd: bandeja });
             log(`  · ${ev.task.id} vuelve a Pendiente para reintentar`);
           }
-          if (/sesión|login/i.test(error)) { esperandoSesion.add(proyecto.motor); estadoSesion(proyecto.motor, { forzar: true }); }
+          if (/sesión|login/i.test(error)) { enEspera.add(ev.task.id); estadoSesion(proyecto.motor, { forzar: true }); }
           avisar(`${ev.task.id}: falló ${proyecto.motor}`, error.trim().split(/\r?\n/).at(-1) || `código ${code}`);
         }
         fin();
@@ -130,21 +131,27 @@ export function vigilar(bandeja, { alTerminar = (code) => process.exit(code ?? 1
     });
   }
 
-  // --- Sesión de cada IA: cuando vuelve, se procesa lo que quedó esperando
-  const esperandoSesion = new Set();
+  // --- Tareas que esperan sesión: cada 30 s se revisa la IA ACTUAL de su proyecto (si cambiaste de
+  // IA en Configuración, o si la sesión volvió, se procesan)
+  const enEspera = new Set();
   const ultimoAvisoSesion = {};
   const revisarSesion = setInterval(async () => {
-    for (const motor of [...esperandoSesion]) {
-      const s = await estadoSesion(motor, { forzar: true });
-      if (!s.conectado || !anterior) continue;
-      esperandoSesion.delete(motor);
-      const proyectos = leerConfig(bandeja).proyectos;
-      const pendientes = [...anterior.values()].filter((t) => t.status === PENDIENTE && proyectos[t.project]?.motor === motor);
-      const ia = NOMBRE_IA[motor] ?? motor;
-      log(`${ia} reconectado: ${pendientes.length} tarea(s) pendiente(s)`);
-      if (pendientes.length) avisar(`${ia} reconectado`, `Procesando ${pendientes.length} tarea(s) pendiente(s).`);
-      for (const t of pendientes) despachar({ type: "task.created", task: t, inicial: true });
+    if (!enEspera.size || !anterior) return;
+    const proyectos = leerConfig(bandeja).proyectos;
+    const listas = [];
+    for (const id of [...enEspera]) {
+      const t = anterior.get(id);
+      if (!t || t.status !== PENDIENTE) { enEspera.delete(id); continue; }
+      const motor = proyectos[t.project]?.motor;
+      if (!motor || !(await estadoSesion(motor, { forzar: true })).conectado) continue;
+      enEspera.delete(id);
+      listas.push([t, motor]);
     }
+    if (!listas.length) return;
+    const ias = [...new Set(listas.map(([, m]) => NOMBRE_IA[m] ?? m))].join(" y ");
+    log(`Retomando ${listas.length} tarea(s) que esperaban sesión (${ias})`);
+    avisar(`${ias} disponible`, `Procesando ${listas.length} tarea(s) que esperaban.`);
+    for (const [t] of listas) despachar({ type: "task.created", task: t, inicial: true });
   }, 30 * 1000);
 
   function despachar(ev) {

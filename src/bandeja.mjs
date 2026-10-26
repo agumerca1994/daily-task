@@ -3,6 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { backlog } from "./backlog.mjs";
+import { validarComando } from "./comandos.mjs";
 import { barras } from "./rutas.mjs";
 
 export const ESTADOS = ["Pendiente", "En análisis", "Esperando info", "Para revisar", "Resuelta"];
@@ -81,7 +82,7 @@ export function validarNombre(nombre) {
 
 export const PERMISOS_ARCHIVOS = ["lectura", "escritura"];
 
-export function agregarProyecto(bandeja, { nombre, carpeta, motor = "kiro", modelo, conectores, archivos }) {
+export function agregarProyecto(bandeja, { nombre, carpeta, motor = "kiro", modelo, conectores, archivos, comandos }) {
   validarNombre(nombre);
   if (!carpeta || !existsSync(carpeta)) throw new Error(`No existe la carpeta del proyecto: ${carpeta}`);
   if (!MOTORES.includes(motor)) throw new Error(`Motor inválido: ${motor} (opciones: ${MOTORES.join(", ")})`);
@@ -91,13 +92,26 @@ export function agregarProyecto(bandeja, { nombre, carpeta, motor = "kiro", mode
   // Si no se indican conectores o permiso de archivos, se conservan los que tenía (reinstalar no los borra)
   const con = conectores ?? antes.conectores;
   const arch = archivos ?? antes.archivos;
+  const cmds = comandos ?? antes.comandos;
   cfg.proyectos[nombre] = {
     carpeta: barras(carpeta), motor, ...(modelo ? { modelo } : {}),
     ...(arch === "escritura" ? { archivos: "escritura" } : {}),
+    ...(cmds?.length ? { comandos: cmds } : {}),
     ...(con && Object.keys(con).length ? { conectores: con } : {}),
   };
   guardarConfig(bandeja, cfg);
   return cfg.proyectos[nombre];
+}
+
+/** Comandos que la IA puede ejecutar en el proyecto (lista vacía = ninguno). */
+export function definirComandos(bandeja, nombre, lista) {
+  const cfg = leerConfig(bandeja);
+  const p = cfg.proyectos[nombre];
+  if (!p) throw new Error(`No existe el proyecto ${nombre}`);
+  const comandos = [...new Set((lista ?? []).map(validarComando))];
+  if (comandos.length) p.comandos = comandos; else delete p.comandos;
+  guardarConfig(bandeja, cfg);
+  return p;
 }
 
 /** Permiso de la IA sobre los archivos del proyecto: "lectura" (por defecto) o "escritura". */

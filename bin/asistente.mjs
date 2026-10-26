@@ -25,6 +25,9 @@ Comandos:
   proyecto archivos <nombre> lectura|escritura
       Si la IA solo lee los archivos del proyecto (por defecto) o también puede modificarlos
       (solo dentro de su carpeta, proponiendo los cambios antes de aplicarlos).
+  proyecto comandos <nombre> ["comando" ...|ninguno]
+      Comandos que la IA puede ejecutar en el proyecto (con cualquier argumento, desde su raíz;
+      --allow-expensive y --force siempre bloqueados). Sin más argumentos, muestra los actuales.
   proyecto conectores <nombre> [servidor=lectura|escritura|herr1+herr2 ...|ninguno]
       Qué conectores del proyecto (Jira, Confluence...) puede usar la IA y con qué permiso.
       Sin más argumentos, muestra los disponibles y los habilitados.

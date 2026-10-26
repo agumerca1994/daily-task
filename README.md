@@ -131,16 +131,32 @@ escritura**:
   respondés aprobándolos, y al final lista los *Archivos modificados* (si es un repo, revisalos con
   `git diff`).
 
+## Comandos que puede ejecutar la IA
+
+Por defecto la IA no ejecuta comandos. Por proyecto se le puede permitir una lista exacta (en
+**Configuración**, como chips, o con `node bin/asistente.mjs proyecto comandos <nombre> "comando" ...`),
+por ejemplo `node tools/cloudwatch-logs/cli.js` para que consulte logs:
+
+- Cada comando queda permitido con cualquier argumento, ejecutado desde la raíz del proyecto; cualquier
+  otro comando lo bloquea la IA. No se aceptan comandos encadenados (`;`, `&&`, `|`…).
+- `--allow-expensive` y `--force` quedan siempre bloqueados: las consultas caras o repetidas las corrés
+  vos.
+- La IA sigue las reglas del proyecto para esa herramienta (por ejemplo, estimar costos antes de
+  consultar) y anota en *Fuentes* qué ejecutó.
+
 ## Claude Code
 
 Funciona igual que Kiro; se elige por proyecto (**Configuración → IA que lo atiende: claude**).
 
 - Requisito: Claude Code instalado y con sesión (`winget install Anthropic.ClaudeCode` en Windows, o el
   instalador oficial; `claude auth login`).
-- El contexto del proyecto sale de su `CLAUDE.md`; las instrucciones del asistente se le pasan en cada
-  tarea.
-- Conectores: los de `<proyecto>/.mcp.json` (el archivo se le pasa a Claude tal cual: las credenciales
-  no se copian), con los mismos permisos No / Lectura / Escritura.
+- El contexto del proyecto sale de su `CLAUDE.md` y, si el proyecto está armado para Kiro, también de
+  su `.kiro/steering/*.md` y `AGENTS.md` (sin tocar el proyecto). Todo se le pasa en un archivo.
+- Conectores: los de `<proyecto>/.mcp.json` o, si no tiene, los de `.kiro/settings/mcp.json` (mismo
+  formato; el archivo se le pasa a Claude tal cual: las credenciales no se copian), con los mismos
+  permisos No / Lectura / Escritura.
+- Si cambiás la IA de un proyecto, las tareas que esperaban la sesión de la anterior se procesan solas
+  con la nueva.
 - Permiso de archivos: con escritura, Claude solo edita dentro de la carpeta del proyecto.
 - **Conectar con Claude Code** (instalador): registra la bandeja en tu usuario de Claude
   (`claude mcp add --scope user`) y agrega un bloque de instrucciones a `~/.claude/CLAUDE.md` (el resto

@@ -286,6 +286,13 @@ main { padding: 20px 24px 48px; }
 .segmento input:disabled + span { opacity: .4; cursor: not-allowed; }
 .segmento input:focus-visible + span { outline: 2px solid var(--azul); outline-offset: -2px; }
 .aviso-escritura { margin: 0; font-size: 13px; color: var(--espera); }
+.comandos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip.comando { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; background: var(--papel); }
+.chip.comando code { font-family: var(--mono); font-size: 12.5px; }
+.chip.comando button { border: 0; background: none; color: var(--tinta-2); font-size: 15px; line-height: 1; padding: 0 4px; border-radius: 50%; }
+.chip.comando button:hover { color: #b91c1c; }
+.agregar-comando { display: inline-flex; gap: 6px; align-items: center; flex: 1 1 260px; }
+.agregar-comando input { font-family: var(--mono); font-size: 12.5px; }
 .conf-nuevo { background: var(--hoja); border: 1px dashed var(--linea); border-radius: 12px; padding: 14px 20px; }
 .conf-nuevo summary { cursor: pointer; font-weight: 600; }
 .conf-nuevo form { display: grid; gap: 12px; margin-top: 12px; }
